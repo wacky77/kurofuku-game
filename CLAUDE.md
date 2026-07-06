@@ -32,7 +32,7 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v23**。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v25**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
@@ -55,6 +55,11 @@
   現実的(7割最適) DAY4 50%/DAY6 29%、ランダムは DAY3 で全滅＝「初日即死しないが旧バランスより難しい」。
 - **新メンバー入店演出**: showNewcomers で SFX.newcomer ジングル＋カードが1枚ずつ弾んで登場（.nc-enter, delayインライン付与）＋
   金のキラキラ8個（.nc-spark）が舞い上がる。結果ポップの★も starPop アニメで弾む。
+- **キャラ付け（v25）**: data.js の `CAST_PERSONA`（28人分の一言 `profile`＋性格タイプ `voice`、CAST_POOL に merge）と
+  `CAST_VOICES`（9タイプ: iyashi/talk/rookie/pro/cool/genki/balance/onee/gal × 6場面: hello/great/ok/bad/nominate/levelup）＋
+  `castLine(cast, kind)`。表示: 選抜カード（.cast-profile）・結果ポップのキャストの一言（.res-say、★4-5=great/★3=ok/★1-2=bad/指名成功=nominate、
+  時間切れは非表示）・Lvアップ時のセリフ（.res-level-say）・新加入の挨拶（.nc-say）・詳細モーダル（.detail-profile）。
+  客のセリフは従来から `CUSTOMER_TYPES[].lines`→play画面の .cust-line で表示済み。
 
 ## 画像アセット（外部AI化・差し替え機構は実装済み）
 外部AI生成のラスタ画像（PNG）とコード内SVGを、**`js/assets.js` の `ASSET_IMG`（存在する画像のidを列挙したマニフェスト）**で切替。avatarSVG/customerFace は id がセットにあれば `<img>`（castImg/custImg）、無ければ従来SVGを返す。背景は enterScreen が `#phone` に `data-bg`（title/floor/result/gameover/none）を付与→CSS がスクリム付きで表示。**背景は `#phone[data-bg]::before`（position:sticky・height:100vh固定・margin-bottom:-100vh）に描画**＝コンテンツが縦に伸びても背景の描画サイズが100vh固定で変わらず、cover由来の「開くとズーム」を防止（#appはz-index:1で上に重なる）。**画像を追加したら: ①assets.js の該当セットにid追加 ②ASSET_V＋index.html/sw.js の版数を揃えて上げる**。

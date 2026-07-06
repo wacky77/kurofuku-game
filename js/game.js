@@ -379,6 +379,7 @@ function renderSelect() {
         <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
         <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
         <div class="cast-tag">${c.tag}</div>
+        <div class="cast-profile">${c.profile || ''}</div>
         <div class="cast-stats">
           ${statRows(c.stats)}
         </div>
@@ -651,8 +652,12 @@ function showResult(cast, result) {
     ? `<div class="res-combo">🔥 ${result.combo}連続的中ボーナス <b>+${Math.round(result.comboBonus * 100)}%</b></div>`
     : '';
   const levelLine = result.leveledUp && cast
-    ? `<div class="res-level">⬆️ ${cast.name} が Lv${result.newLevel} に成長！</div>`
+    ? `<div class="res-level">⬆️ ${cast.name} が Lv${result.newLevel} に成長！ <span class="res-level-say">「${castLine(cast, 'levelup')}」</span></div>`
     : '';
+  // キャストの一言（性格タイプ別。時間切れ時は cast が無いので出さない）
+  const sayKind = result.nominateHit === true ? 'nominate'
+    : result.star >= 4 ? 'great' : result.star === 3 ? 'ok' : 'bad';
+  const sayLine = cast ? `<div class="res-say">「${castLine(cast, sayKind)}」</div>` : '';
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.innerHTML = `
@@ -660,6 +665,7 @@ function showResult(cast, result) {
       ${cast ? `<div class="res-cast"><span class="res-face">${avatarSVG(cast.id, 56)}</span>${cast.name}</div>` : ''}
       ${starLine}
       <div class="res-comment">${result.comment}</div>
+      ${sayLine}
       ${comboLine}
       <div class="res-sales">売上 +<span id="salesCount">¥0</span></div>
       ${result.gotRepeater ? '<div class="res-repeat">✨ リピーター獲得！</div>' : ''}
@@ -1005,6 +1011,7 @@ function showCastDetail(id) {
         </div>
         <div class="detail-lv">Lv<b>${lv}</b></div>
       </div>
+      ${c.profile ? `<div class="detail-profile">${c.profile}</div>` : ''}
       <div class="detail-exp">
         <div class="detail-exp-top"><span>育成EXP</span><span>${expLabel}</span></div>
         <div class="exp-bar ${isMax ? 'max' : ''}"><i style="width:${expPct}%"></i></div>
@@ -1082,6 +1089,7 @@ function showNewcomers(incoming) {
       <div class="cast-avatar">${avatarSVG(c.id, 72)}</div>
       <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
       <div class="cast-tag">${c.tag}</div>
+      <div class="nc-say">「${castLine(c, 'hello')}」</div>
       <div class="cast-stats">
         ${statRows(c.stats)}
       </div>

@@ -2,18 +2,18 @@
 // アセット更新時は CACHE のバージョンを上げる。
 // 画像は IMG_CACHE に分離し、版数更新をまたいで保持する
 // （画像URLは ?v=ASSET_V 付きなので、画像自体を差し替えた時だけ自然に再取得される）。
-const CACHE = 'kurofuku-v24';
+const CACHE = 'kurofuku-v25';
 const IMG_CACHE = 'kurofuku-img';
 const ASSETS = [
   './',
   './index.html',
-  './css/style.css?v=23',
-  './js/assets.js?v=23',
-  './js/data.js?v=23',
-  './js/avatars.js?v=23',
-  './js/audio.js?v=23',
-  './js/achieve.js?v=23',
-  './js/game.js?v=23',
+  './css/style.css?v=25',
+  './js/assets.js?v=25',
+  './js/data.js?v=25',
+  './js/avatars.js?v=25',
+  './js/audio.js?v=25',
+  './js/achieve.js?v=25',
+  './js/game.js?v=25',
   './assets/icon.svg',
   './manifest.webmanifest',
 ];
