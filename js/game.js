@@ -800,6 +800,26 @@ function renderDayResult() {
       </div>`;
   }).join('');
 
+  // 店長以上まで上り詰めてのゲームオーバーは、通算売上No.1のキャストが労ってくれる
+  let celebrate = '';
+  if (!achieved && rk.index >= 4) {
+    const ids = Object.keys(State.castEarnings).filter(id => State.castEarnings[id] > 0);
+    const topId = ids.sort((a, b) => State.castEarnings[b] - State.castEarnings[a])[0]
+      || (State.roster[0] && State.roster[0].id);
+    const topCast = CAST_POOL.find(c => c.id === topId);
+    if (topCast) {
+      const kind = rk.index >= 6 ? 'gm_legend' : rk.index >= 5 ? 'gm_area' : 'gm_tencho';
+      celebrate = `
+        <div class="gm-celebrate">
+          <div class="gmc-face">${avatarSVG(topCast.id, 56)}</div>
+          <div class="gmc-body">
+            <div class="gmc-name">👑 No.1キャスト ${topCast.name}</div>
+            <div class="gmc-line">「${castLine(topCast, kind)}」</div>
+          </div>
+        </div>`;
+    }
+  }
+
   // 目標未達はゲームオーバー（翌日には進めない）。スコアはここで登録。
   const rank = achieved ? -1 : scoreRank(State.totalSales);
   const canRegister = rank >= 0 && !State.scoreSaved;
@@ -831,6 +851,7 @@ function renderDayResult() {
     <div class="screen result-screen ${achieved ? '' : 'gameover'}">
       <h2 class="day-result-head">${achieved ? '🎉 目標達成！' : '💀 GAME OVER'}</h2>
       ${achieved ? '' : `<p class="gameover-sub">DAY ${State.day} で目標に届かず閉店…</p>`}
+      ${celebrate}
       <div class="big-sales" id="bigSales">${yen(State.sales)}</div>
       <p class="day-goal">目標 ${yen(State.today.goal)}</p>
       <div class="result-stats">
