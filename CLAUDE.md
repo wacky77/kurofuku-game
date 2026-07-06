@@ -25,6 +25,12 @@
 - `.claude/launch.json` に `kurofuku`（python3 http.server 5501）を登録済み。preview_start で起動。
 - （親フォルダ側には 5500/5599 の設定もあるが、この独立ワークスペースでは 5501 を使う）
 
+## 公開（GitHub Pages）
+- **公開URL: https://wacky77.github.io/kurofuku-game/**（iPhoneはSafariで開き「ホーム画面に追加」でPWA化）
+- リポジトリ: https://github.com/wacky77/kurofuku-game （public / branch main / path root）
+- 認証はmacキーチェーンに保存済み（username wacky77）。**更新の反映は `git add -A && git commit && git push origin main` だけ**。Pagesが自動再ビルド（1〜2分）。
+- PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
+
 ## キャッシュ規約（重要）
 `index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v23**。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
