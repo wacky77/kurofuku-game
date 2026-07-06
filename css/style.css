@@ -213,6 +213,14 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .cc-stambar.mid i { background: var(--gold); }
 .cc-stambar.low i { background: var(--bad); }
 
+/* 5人以上（DAY4〜）は3列コンパクト表示で縦を圧縮 */
+.choice-grid.compact { grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+.choice-grid.compact .cast-choice { padding: 7px 4px; gap: 3px; border-radius: 12px; }
+.choice-grid.compact .cc-face .avatar { border-radius: 10px; }
+.choice-grid.compact .cc-name { font-size: 12px; }
+.choice-grid.compact .cc-stambar { width: 80%; height: 4px; }
+.choice-grid.compact .cc-lv { font-size: 9px; }
+
 /* ---------- 結果ポップアップ ---------- */
 .overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.75);

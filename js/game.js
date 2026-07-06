@@ -447,6 +447,8 @@ function nextCustomer() {
 function renderPlay() {
   enterScreen();
   const c = State.currentCustomer;
+  // 5人以上は3列コンパクト表示（2列のままだと3行になり画面が縦長になるため）
+  const compact = State.roster.length >= 5;
   const casts = State.roster.map(cast => {
     const low = cast.stamina < 25;
     // 本番中はスキル（星）を見せない。顔と名前で判断する。
@@ -457,7 +459,7 @@ function renderPlay() {
     return `
       <button class="cast-choice ${low ? 'tired' : ''}" data-id="${cast.id}">
         ${lvBadge}
-        <span class="cc-face">${avatarSVG(cast.id, 68)}</span>
+        <span class="cc-face">${avatarSVG(cast.id, compact ? 52 : 68)}</span>
         <span class="cc-name">${cast.name}${low ? ' 😪' : ''}</span>
         <span class="cc-stambar ${stamClass}"><i style="width:${cast.stamina}%"></i></span>
       </button>`;
@@ -494,7 +496,7 @@ function renderPlay() {
       </div>
 
       <p class="pick-label">誰を付ける？</p>
-      <div class="choice-grid">${casts}</div>
+      <div class="choice-grid${compact ? ' compact' : ''}">${casts}</div>
     </div>`;
 
   document.querySelectorAll('.cast-choice').forEach(el => {
