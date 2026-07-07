@@ -32,7 +32,7 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v28**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v29**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化／v29: BGM曲別音量）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
@@ -82,7 +82,8 @@
 - 切替: `game.js` の `enterScreen()` が背景名と同じ id で `SFX.bgm(bg)` を呼ぶだけ（title/floor/result/gameover が自動で切替。個別の bgmStart/bgmStop 呼び出しは撤去済み）。タイトル表示中に floor を先読み。
 - ミュート: 既存トグルと共通（`muted`）。BGMは停止せず GainNode の音量を0にするだけ（復帰時に曲が途切れない）。
 - キャッシュ: 音声URLは `?v=ASSET_V` 付き・sw.js は `/assets/audio/` を画像と同じ**永続 IMG_CACHE** に保存（版数更新をまたいで保持）。**曲を差し替えたら ASSET_V を上げる**（画像も再取得になる点に注意）。
-- 音量バランス: `BGM_VOL = 0.35`（audio.js）。効果音より控えめ。
+- 音量バランス: `BGM_VOL` は**曲別テーブル**（audio.js、v29〜）: title/result/gameover 0.35・**floor 0.22**。
+  実測RMSは floor が最も低い(-20dB)が、プレイ中は効果音と常時重なり体感が大きいためユーザー指摘で下げた経緯。
 
 ## 残課題
 なし（2026-07-07: 加入演出強化・時間切れのsim反映・バランス再調整・実績システムを実装済み。画像は全アセット外部AI化・圧縮完了）。

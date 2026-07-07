@@ -84,9 +84,12 @@ const SFX = (() => {
   // fetch + decodeAudioData + AudioBufferSourceNode なのは、①ループの継ぎ目が出ない
   // ②iOS Safari の Range 要求と Service Worker の相性問題を踏まない ③既存のミュートと
   // 同じ AudioContext に乗る、ため。読み込み失敗時は floor のみ従来の合成BGMで代替。
-  const BGM_VOL = 0.35;
+  // 曲別の再生音量。実測RMSは floor が最も低い(-20dB)が、プレイ中は効果音と
+  // 常時重なって体感が大きくなるため floor だけ下げている。
+  const BGM_VOL = { title: 0.35, floor: 0.22, result: 0.35, gameover: 0.35 };
   const bgmBufs = {};                 // name -> {buf, ls, le} | 'loading' | 'error'
   let bgmName = null, bgmSrc = null, bgmGain = null;
+  function bgmVol() { return BGM_VOL[bgmName] || 0.3; }
 
   // MP3はエンコーダ由来の無音が頭尾に付くため、無音を除いた区間をループ範囲にする
   function loopRange(buf) {
@@ -128,7 +131,7 @@ const SFX = (() => {
     src.loopStart = e.ls;
     src.loopEnd = e.le;
     const g = c.createGain();
-    g.gain.value = muted ? 0 : BGM_VOL;
+    g.gain.value = muted ? 0 : bgmVol();
     src.connect(g).connect(c.destination);
     src.start(0, e.ls);
     bgmSrc = src; bgmGain = g;
@@ -172,7 +175,7 @@ const SFX = (() => {
     toggle() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) { /* 無視 */ }
-      if (bgmGain) bgmGain.gain.value = muted ? 0 : BGM_VOL; // BGMは止めず音量だけ絞る
+      if (bgmGain) bgmGain.gain.value = muted ? 0 : bgmVol(); // BGMは止めず音量だけ絞る
       if (!muted) this.tap(); // オンにした合図
       return muted;
     },
