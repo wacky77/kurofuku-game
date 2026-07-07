@@ -162,6 +162,8 @@ function makeCustomer() {
     : rand(Object.keys(NEEDS));
   const age = rand(CUSTOMER_AGES);
   const ctx = rand(CUSTOMER_CONTEXTS);
+  // 本音を隠す客：ニーズを直接言わず、様子ヒント（NEEDS[].hints）から察してもらう
+  const vague = Math.random() < State.today.vagueChance;
   return {
     isEvent: false,
     name: rand(CUSTOMER_NAMES) + 'さん',
@@ -174,6 +176,8 @@ function makeCustomer() {
     profile: `${age}・${ctx}`,
     line: rand(type.lines),
     desc: NEEDS[needKey].label,
+    vague: vague,
+    hint: vague ? rand(NEEDS[needKey].hints) : '',
     need: NEEDS[needKey].need,
     budget: scaleBudget(rand(type.budgets)),
     bonusMult: 1.0,
@@ -460,6 +464,9 @@ function nextCustomer() {
   State.currentCustomer = State.customers[State.customerIndex];
   renderPlay();
   SFX.arrive();
+  // イベント客・指名客は登場感を出す（キラッと上昇ジングルを重ねる）
+  const c = State.currentCustomer;
+  if (c.isEvent || c.isNomination) SFX.vip();
   startTimer();
 }
 
@@ -491,6 +498,15 @@ function renderPlay() {
   const custClass = c.isNomination ? 'nomination' : c.isEvent ? 'event' : '';
   const custTitle = c.isNomination ? '💐' + c.title : c.isEvent ? '⚡' + c.title : c.title;
 
+  // 次のお客の予告（エースを温存するか等の体力配分を考えられる）。
+  // イベント・指名は「気配」だけ見せて登場のサプライズは残す。
+  const nx = State.customers[State.customerIndex + 1];
+  const nextLine = !nx
+    ? '🌙 このお客様で本日ラスト！'
+    : nx.isEvent ? '次のお客様: ⚡ 何かが起きそうな気配…'
+    : nx.isNomination ? '次のお客様: 💐 常連さんの予感…'
+    : `次のお客様: ${nx.emoji} ${nx.title}`;
+
   app.innerHTML = `
     <div class="screen play-screen">
       <div class="hud">
@@ -510,12 +526,15 @@ function renderPlay() {
         <div class="cust-title">${custTitle}</div>
         <div class="cust-profile">${c.profile}</div>
         ${c.line ? `<div class="cust-line">“${c.line}”</div>` : ''}
-        <div class="cust-need">「${c.desc}」</div>
+        ${c.vague
+          ? `<div class="cust-need vague"><b>🤔 本音を察して…</b>${c.hint}</div>`
+          : `<div class="cust-need">「${c.desc}」</div>`}
         <div class="cust-budget">予算 ${yen(c.budget)}</div>
       </div>
 
       <p class="pick-label">誰を付ける？</p>
       <div class="choice-grid${compact ? ' compact' : ''}">${casts}</div>
+      <div class="next-cust">${nextLine}</div>
     </div>`;
 
   document.querySelectorAll('.cast-choice').forEach(el => {
@@ -662,6 +681,7 @@ function recordLog(chosenCast, result, timeout) {
   const chosenStat = chosenCast ? chosenCast.stats[need] : -1;
   State.log.push({
     custEmoji: cust.emoji,
+    custName: cust.name || '',
     custLabel: cust.isEvent ? cust.title : NEEDS[need].label,
     chosenId: chosenCast ? chosenCast.id : null,
     star: result.star,
@@ -679,6 +699,11 @@ function recordLog(chosenCast, result, timeout) {
 
 // ---------- 結果ポップアップ ----------
 function showResult(cast, result) {
+  const cust = State.currentCustomer;
+  // 本音を隠していた客は、ここで答え合わせ（見極めの学習ループ）
+  const revealLine = cust && cust.vague
+    ? `<div class="res-reveal">🤔 本音は「${NEEDS[cust.need].label}」だった</div>`
+    : '';
   const starLine = result.star > 0 ? `<div class="res-stars">${stars(result.star)}</div>` : '<div class="res-stars fail">時間切れ</div>';
   const comboLine = result.comboBonus > 0
     ? `<div class="res-combo">🔥 ${result.combo}連続的中ボーナス <b>+${Math.round(result.comboBonus * 100)}%</b></div>`
@@ -699,6 +724,7 @@ function showResult(cast, result) {
     <div class="result-card ${result.star >= 4 ? 'good' : result.star <= 1 ? 'bad' : ''}">
       ${cast ? `<div class="res-cast"><span class="res-face">${avatarSVG(cast.id, 56)}</span>${cast.name}</div>` : ''}
       ${starLine}
+      ${revealLine}
       <div class="res-comment">${result.comment}</div>
       ${sayLine}
       ${comboLine}
@@ -813,8 +839,8 @@ function renderDayResult() {
     return `
       <div class="rv-row ${l.hit ? 'ok' : 'ng'}">
         <div class="rv-top">
-          <span class="rv-cust">${l.custEmoji} ${l.custLabel}</span>
-          <span class="rv-mark">${l.hit ? '○ 正解' : '× 惜しい'}</span>
+          <span class="rv-cust">${l.custEmoji} ${l.custName ? `${l.custName} ` : ''}<small>${l.custLabel}</small></span>
+          <span class="rv-right"><span class="rv-mark">${l.hit ? '○ 正解' : '× 惜しい'}</span><span class="rv-sales">+${yen(l.sales)}</span></span>
         </div>
         <div class="rv-bottom">
           <div class="rv-c">

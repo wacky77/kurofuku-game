@@ -213,6 +213,35 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .cust-line { font-size: 13px; color: var(--text); font-style: italic; opacity: .82; margin: 6px auto 2px; max-width: 90%; }
 .cust-need { font-size: 16px; color: var(--gold); margin: 8px 0 4px; }
 .cust-budget { font-size: 13px; color: var(--text); }
+/* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう） */
+.cust-need.vague { font-size: 13.5px; color: var(--text); font-style: italic; margin: 8px auto 4px; max-width: 92%; line-height: 1.5; }
+.cust-need.vague b { display: block; font-style: normal; font-size: 11px; color: var(--pink); letter-spacing: .06em; margin-bottom: 1px; }
+/* 結果ポップでの本音の答え合わせ */
+.res-reveal { font-size: 12.5px; color: var(--muted); margin: 2px 0 4px; }
+
+/* ---------- 来店演出 ---------- */
+/* 客カードが入り口からスッと入ってくる（1組ごとに再生） */
+.customer { animation: custIn .45s cubic-bezier(.22, .9, .32, 1.2) both; }
+@keyframes custIn {
+  from { opacity: 0; transform: translateX(64px) scale(.92); }
+  to   { opacity: 1; transform: none; }
+}
+.cust-emoji { animation: custFace .5s cubic-bezier(.3, 1.5, .5, 1) .1s backwards; }
+@keyframes custFace {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+/* イベント客・指名客は金色の光をまとって登場 */
+.customer.event, .customer.nomination { position: relative; overflow: hidden; }
+.customer.event::after, .customer.nomination::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 28%, rgba(255, 236, 170, .5), transparent 62%);
+  animation: custFlash 1.2s ease-out .15s both;
+}
+@keyframes custFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+
+/* 次のお客の予告（体力配分のプランニング用） */
+.next-cust { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 10px; }
 
 .pick-label { text-align: center; font-size: 13px; color: var(--muted); }
 .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -347,6 +376,9 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .rv-row.ng { border-color: rgba(255, 92, 92, .4); }
 .rv-top { display: flex; justify-content: space-between; align-items: center; }
 .rv-cust { font-size: 13px; color: var(--text); }
+.rv-cust small { font-size: 11px; color: var(--muted); }
+.rv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.rv-sales { font-size: 11px; font-weight: 700; color: var(--gold); }
 .rv-mark { font-size: 12px; font-weight: 700; }
 .rv-row.ok .rv-mark { color: var(--good); }
 .rv-row.ng .rv-mark { color: var(--bad); }

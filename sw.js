@@ -2,18 +2,18 @@
 // アセット更新時は CACHE のバージョンを上げる。
 // 画像・音声（BGM）は IMG_CACHE に分離し、版数更新をまたいで保持する
 // （URLは ?v=ASSET_V 付きなので、ファイル自体を差し替えた時だけ自然に再取得される）。
-const CACHE = 'kurofuku-v30';
+const CACHE = 'kurofuku-v31';
 const IMG_CACHE = 'kurofuku-img';
 const ASSETS = [
   './',
   './index.html',
-  './css/style.css?v=30',
-  './js/assets.js?v=30',
-  './js/data.js?v=30',
-  './js/avatars.js?v=30',
-  './js/audio.js?v=30',
-  './js/achieve.js?v=30',
-  './js/game.js?v=30',
+  './css/style.css?v=31',
+  './js/assets.js?v=31',
+  './js/data.js?v=31',
+  './js/avatars.js?v=31',
+  './js/audio.js?v=31',
+  './js/achieve.js?v=31',
+  './js/game.js?v=31',
   './assets/icon.svg',
   './manifest.webmanifest',
 ];

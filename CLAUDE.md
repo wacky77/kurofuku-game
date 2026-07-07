@@ -32,7 +32,7 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v30**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化／v29: BGM曲別音量／v30: 新人特性〈伸びしろ〉）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v31**（v25: sw.jsのCACHE名ズレ再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化／v29: BGM曲別音量／v30: 新人特性〈伸びしろ〉／v31: 客の見極め・来店演出・振り返り強化）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
@@ -62,6 +62,16 @@
   客のセリフは従来から `CUSTOMER_TYPES[].lines`→play画面の .cust-line で表示済み。
 - **5人以上のコンパクト表示（v26）**: renderPlay で roster が5人以上なら `.choice-grid.compact`（3列・顔52px・余白圧縮）に切替。
   DAY4の5席/DAY7の6席でも選択ボタンが2行に収まり、iPhone縦(812px)でスクロール不要。4人以下は従来の2列のまま。
+- **客の見極め・来店演出・振り返り強化（v31）**:
+  - **本音を隠す客**: 通常客の一部（`vagueChance` 25%+4%/日・上限60%、data.js の DAY_CONFIG→difficulty()）はニーズ名を出さず
+    `NEEDS[].hints`（各ニーズ4種の様子ヒント文）を「🤔 本音を察して…」(.cust-need.vague) で表示。ペルソナの needBias(6割)との
+    合わせ読みが攻略になる。結果ポップで「🤔 本音は『◯◯』だった」(.res-reveal) と答え合わせ。イベント客・指名客は対象外。
+    判定ロジック(judge/chooseCast)は不変＝simへの影響なし（表示だけの変更）。
+  - **次のお客の予告**: play画面下部 .next-cust に次客のemoji＋肩書を表示（エース温存など体力配分の計画用）。
+    イベントは「⚡何かが起きそうな気配…」・指名は「💐常連さんの予感…」とぼかしてサプライズは残す。最終組は「🌙ラスト」。
+  - **来店演出**: .customer に custIn スライドイン＋.cust-emoji の custFace ポップ（1組ごと再生）。イベント客・指名客は
+    金色フラッシュ(::after custFlash)＋上昇ジングル `SFX.vip()`（audio.js、nextCustomer から）。
+  - **振り返り強化**: State.log に custName 追加。接客ふりかえり各行に客名（🤵 林さん 社長来店）と売上（.rv-right/.rv-sales）を表示。
 - **新人特性〈伸びしろ〉（v30）**: `rookie: true` のキャスト（6人）は **EXP獲得2倍＋Lvアップのたび一番低い能力+1**（上限5・同率は
   ランダム。game.js の `ROOKIE` / `rookieStatUp()`、成長はrun内のみ＝rosterのstatsコピーに加算）。初期ステが低い新人を「場数を踏むと
   育つ」投資枠にした（ユーザー発案）。表示: 選抜カード・加入お披露目の `.rookie-trait` 行「🌱 伸びしろ：成長2倍・Lvアップで能力UP」、

@@ -213,11 +213,16 @@ function castLine(cast, kind) {
 
 // --- お客のニーズ種別 ---
 // key: 内部キー / label: 表示 / need: 重視するキャストのステータス
+// hints: 「本音を隠す客」用の様子ヒント（ニーズを直接言わず、この文から察してもらう）
 const NEEDS = {
-  heal:  { label: '癒されたい',       need: 'heal'  },
-  talk:  { label: '盛り上がりたい',   need: 'talk'  },
-  price: { label: 'とことん飲みたい', need: 'price' },
-  smile: { label: '元気をもらいたい', need: 'smile' },
+  heal:  { label: '癒されたい',       need: 'heal',
+    hints: ['深いため息をついている…', '肩を揉みながら席についた。疲れている様子だ', '「今週は休みがなくてね…」と遠い目をしている', 'おしぼりを顔に当てて動かない…相当お疲れのようだ'] },
+  talk:  { label: '盛り上がりたい',   need: 'talk',
+    hints: ['「何か面白い話ある？」と身を乗り出している', '口数が多く、話し相手を探している様子だ', '「最近さぁ、聞いてよ〜」と話したくてうずうずしている', 'キョロキョロと賑やかな席を羨ましそうに見ている'] },
+  price: { label: 'とことん飲みたい', need: 'price',
+    hints: ['ボトル棚の高い段ばかり眺めている…', '「今日は財布が温かいんだ」とニヤリと笑った', '腕時計がキラリと光る。金離れが良さそうだ', 'メニューを見ずに「いいの持ってきてよ」と言っている'] },
+  smile: { label: '元気をもらいたい', need: 'smile',
+    hints: ['うつむき気味で、どこか元気がない…', '「最近いいことなくてさ」と苦笑いしている', '沈んだ表情。パッと明るくしてほしそうだ', 'スマホを見てはため息…励ましが必要そうだ'] },
 };
 
 // --- お客の名字（来店客ごとにランダムで割り当て。表示は「〇〇さん」）---
@@ -335,6 +340,10 @@ const DAY_CONFIG = {
   customersMax: 10,       // 来店数の上限
   eventChancePerDay: 0.03,// 1日ごとに上がるイベント発生率
   eventChanceMax: 0.5,    // イベント発生率の上限
+  // --- 本音を隠す客（ニーズを言わず、様子ヒントから察してもらう）---
+  vagueChance: 0.25,      // 通常客が「本音を隠す客」になる確率（基準＝DAY1）
+  vagueChancePerDay: 0.04,// 1日ごとに上がる割合（後半ほど見極めが問われる）
+  vagueChanceMax: 0.6,    // 上限
   // --- 翌日への繰越（連投で疲弊させる）---
   // 繰越メンバーは一晩でこの量だけ体力回復（100上限）。全開はしない。
   overnightRecoverBase: 40, // 繰越1回目の夜の回復量
@@ -383,5 +392,6 @@ function difficulty(day) {
     timeLimit:   Math.max(d.timeLimitMin, d.timeLimitSec - Math.floor(n / d.timeStepDays)),
     customers:   Math.min(d.customersMax, d.customersPerDay + Math.floor(n / d.custStepDays)),
     eventChance: Math.min(d.eventChanceMax, d.eventChance + n * d.eventChancePerDay),
+    vagueChance: Math.min(d.vagueChanceMax, d.vagueChance + n * d.vagueChancePerDay),
   };
 }
