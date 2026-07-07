@@ -307,11 +307,14 @@ const CUSTOMER_TYPES = [
 
 // --- ランダムイベント（通常客より発生率は低い） ---
 // bonusMult: 成功時の売上倍率 / need: 求められるステータス
+// weight: イベント内の出現重み（v32〜）。社長来店(ceo)は最大のジャックポットなので出現を絞る。
+// 均等25%だと高単価キャストの期待売上シェアが38%まで膨らむ（癒し13%）ため、
+// 30/15/30/25 に重み付けして4ニーズをほぼ均等（DAY8で 癒し15/トーク31/単価28/笑顔25%）にした。
 const EVENTS = [
-  { id: 'birthday', title: '誕生日客', emoji: '🎂', context: '今日が誕生日', need: 'smile', budget: 70000,  bonusMult: 1.5, desc: '盛大に祝って喜ばせたい！',       bg: '#3a1e2e', bg2: '#5c3050', lines: ['今日オレの誕生日なんだ！', 'パーッと祝ってほしいな'] },
-  { id: 'ceo',      title: '社長来店', emoji: '🤵', context: 'VIP・大口',    need: 'price', budget: 140000, bonusMult: 1.6, desc: '太い客。高単価キャストで攻めたい。', bg: '#322a12', bg2: '#5c4a14', lines: ['うちの連中も連れて来たよ', '今日はいくら使ってもいい'] },
-  { id: 'drunk',    title: '酔っ払い', emoji: '🥴', context: 'かなり酔ってる', need: 'heal',  budget: 35000,  bonusMult: 1.2, desc: '落ち着かせられるキャストを。',     bg: '#2a2e1e', bg2: '#464e30', lines: ['もう…けっこう飲んでるぅ…', 'ちょっと落ち着きたいなァ…'] },
-  { id: 'vip',      title: 'VIP指名',  emoji: '👑', context: '常連の上客',    need: 'talk',  budget: 105000, bonusMult: 1.5, desc: '会話で満足させればリピート確実。', bg: '#2a1e3a', bg2: '#463066', lines: ['いつもの子はいるかい？', '今日も楽しませてくれよ'] },
+  { id: 'birthday', title: '誕生日客', emoji: '🎂', context: '今日が誕生日', need: 'smile', budget: 70000,  bonusMult: 1.5, weight: 30, desc: '盛大に祝って喜ばせたい！',       bg: '#3a1e2e', bg2: '#5c3050', lines: ['今日オレの誕生日なんだ！', 'パーッと祝ってほしいな'] },
+  { id: 'ceo',      title: '社長来店', emoji: '🤵', context: 'VIP・大口',    need: 'price', budget: 140000, bonusMult: 1.6, weight: 15, desc: '太い客。高単価キャストで攻めたい。', bg: '#322a12', bg2: '#5c4a14', lines: ['うちの連中も連れて来たよ', '今日はいくら使ってもいい'] },
+  { id: 'drunk',    title: '酔っ払い', emoji: '🥴', context: 'かなり酔ってる', need: 'heal',  budget: 35000,  bonusMult: 1.2, weight: 30, desc: '落ち着かせられるキャストを。',     bg: '#2a2e1e', bg2: '#464e30', lines: ['もう…けっこう飲んでるぅ…', 'ちょっと落ち着きたいなァ…'] },
+  { id: 'vip',      title: 'VIP指名',  emoji: '👑', context: '常連の上客',    need: 'talk',  budget: 105000, bonusMult: 1.5, weight: 25, desc: '会話で満足させればリピート確実。', bg: '#2a1e3a', bg2: '#463066', lines: ['いつもの子はいるかい？', '今日も楽しませてくれよ'] },
 ];
 
 // --- 難易度／日ごとの設定 ---
@@ -320,9 +323,11 @@ const EVENTS = [
 const DAY_CONFIG = {
   customersPerDay: 6,     // 1日の来店数（基準）
   eventChance: 0.25,      // 各客がイベント客になる確率（基準）
-  dailyGoal: 220000,      // 1日の目標売上（基準＝DAY1）。v21/v22の収益ダウン（単価0.72・体力カーブ強化）
+  dailyGoal: 215000,      // 1日の目標売上（基準＝DAY1）。v21/v22の収益ダウン（単価0.72・体力カーブ強化）
                           // に合わせて tools/sim.js で再計測し 300k→220k に調整（時間切れモデル込みで
-                          // 最適プレイ DAY6到達75%・現実的プレイ48%@DAY4。初日即死をなくしつつ難度は維持）
+                          // 最適プレイ DAY6到達75%・現実的プレイ48%@DAY4。初日即死をなくしつつ難度は維持）。
+                          // v32: 社長来店の出現減（EVENTS.weight）で客単価EVが5〜8%下がったため
+                          // 220k→215k・goalPerDay 45k→42k に再調整（sim: 最適D6 78%・現実的D4 51%＝従来同等）
   timeLimitSec: 8,        // 1組あたりの選択制限時間・秒（基準＝DAY1）
   staminaCost: 20,        // 接客1回で消費する体力
   staminaRecover: 5,      // 接客されなかったキャストが回復する体力
@@ -333,7 +338,7 @@ const DAY_CONFIG = {
   budgetScale: 0.72,      // 客単価の一括補正（0.9→0.72、従来比さらに2割ダウンで難度UP）。予算は1000円単位に丸める
 
   // --- 後半ほど難しくする難易度カーブ ---
-  goalPerDay: 45000,      // 1日ごとに上乗せする売上目標（55k→45k・dailyGoalと同時にsim再調整）
+  goalPerDay: 42000,      // 1日ごとに上乗せする売上目標（55k→45k→v32で42k・dailyGoalと同時にsim再調整）
   timeStepDays: 2,        // 何日ごとに制限時間を1秒縮めるか
   timeLimitMin: 4,        // 制限時間の下限（秒）
   custStepDays: 2,        // 何日ごとに来店数を+1するか

@@ -69,6 +69,13 @@ function comboMult(combo) {
 
 // ---------- ユーティリティ ----------
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// weight プロパティ付き配列からの重み付き抽選（EVENTS用。weight 省略時は1）
+function randWeighted(arr) {
+  const total = arr.reduce((a, e) => a + (e.weight || 1), 0);
+  let r = Math.random() * total;
+  for (const e of arr) { r -= (e.weight || 1); if (r <= 0) return e; }
+  return arr[arr.length - 1];
+}
 // 配列から重複なくランダムに n 件抜き出す（Fisher-Yates）
 function pickRandom(arr, n) {
   const a = [...arr];
@@ -138,7 +145,7 @@ function scaleBudget(n) {
 // ---------- 来店客の生成 ----------
 function makeCustomer() {
   if (Math.random() < State.today.eventChance) {
-    const ev = rand(EVENTS);
+    const ev = randWeighted(EVENTS); // 社長来店などジャックポットは weight で絞る
     return {
       isEvent: true,
       name: rand(CUSTOMER_NAMES) + 'さん',
