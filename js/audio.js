@@ -79,7 +79,62 @@ const SFX = (() => {
     osc.stop(t0 + dur + 0.02);
   }
 
-  // --- BGM：明るいポップな進行を弾むアルペジオでループ ---
+  // --- BGM：外部音源（assets/audio/<画面id>.mp3）を Web Audio でループ再生 ---
+  // 画面id（title/floor/result/gameover）＝ファイル名。<audio> ではなく
+  // fetch + decodeAudioData + AudioBufferSourceNode なのは、①ループの継ぎ目が出ない
+  // ②iOS Safari の Range 要求と Service Worker の相性問題を踏まない ③既存のミュートと
+  // 同じ AudioContext に乗る、ため。読み込み失敗時は floor のみ従来の合成BGMで代替。
+  const BGM_VOL = 0.35;
+  const bgmBufs = {};                 // name -> {buf, ls, le} | 'loading' | 'error'
+  let bgmName = null, bgmSrc = null, bgmGain = null;
+
+  // MP3はエンコーダ由来の無音が頭尾に付くため、無音を除いた区間をループ範囲にする
+  function loopRange(buf) {
+    const d = buf.getChannelData(0), th = 0.001;
+    let a = 0, b = d.length - 1;
+    while (a < b && Math.abs(d[a]) < th) a++;
+    while (b > a && Math.abs(d[b]) < th) b--;
+    return [a / buf.sampleRate, (b + 1) / buf.sampleRate];
+  }
+
+  function bgmLoad(name) {
+    if (bgmBufs[name]) return;
+    bgmBufs[name] = 'loading';
+    const v = typeof ASSET_V !== 'undefined' ? ASSET_V : 0;
+    fetch(`assets/audio/${name}.mp3?v=${v}`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then((ab) => new Promise((res, rej) => {
+        const c = ac();
+        if (!c) rej(new Error('no AudioContext'));
+        else c.decodeAudioData(ab, res, rej);
+      }))
+      .then((buf) => {
+        const [ls, le] = loopRange(buf);
+        bgmBufs[name] = { buf, ls, le };
+        if (bgmName === name) bgmPlay(name); // 読み込み中に画面が来ていたら開始
+      })
+      .catch(() => {
+        bgmBufs[name] = 'error';
+        if (bgmName === name && name === 'floor') synthStart();
+      });
+  }
+
+  function bgmPlay(name) {
+    const c = ac(), e = bgmBufs[name];
+    if (!c || !e || typeof e !== 'object' || bgmSrc) return;
+    const src = c.createBufferSource();
+    src.buffer = e.buf;
+    src.loop = true;
+    src.loopStart = e.ls;
+    src.loopEnd = e.le;
+    const g = c.createGain();
+    g.gain.value = muted ? 0 : BGM_VOL;
+    src.connect(g).connect(c.destination);
+    src.start(0, e.ls);
+    bgmSrc = src; bgmGain = g;
+  }
+
+  // --- 合成BGM（外部音源が読めない時の floor 用フォールバック） ---
   // I–V–vi–IV（C→G→Am→F）。跳ねるベース＋上昇アルペジオで楽しげに。
   const BGM_PROG = [
     { root: 130.81, chord: [261.63, 329.63, 392.00] }, // C  (C4 E4 G4)
@@ -102,12 +157,22 @@ const SFX = (() => {
     pluck(note, 0.15, s % 2 === 0 ? 0.05 : 0.038, 'square');
     bgmStep++;
   }
+  function synthStart() {
+    if (bgmTimer) return;
+    bgmStep = 0;
+    bgmTick();
+    bgmTimer = setInterval(bgmTick, BGM_STEP_MS);
+  }
+  function synthStop() {
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+  }
 
   return {
     get muted() { return muted; },
     toggle() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) { /* 無視 */ }
+      if (bgmGain) bgmGain.gain.value = muted ? 0 : BGM_VOL; // BGMは止めず音量だけ絞る
       if (!muted) this.tap(); // オンにした合図
       return muted;
     },
@@ -139,15 +204,20 @@ const SFX = (() => {
     levelup(){ melody(['C5','E5','G5'], 0.06, 'square', 0.22); },
     // 新メンバー入店（キラッと駆け上がるお披露目ジングル）
     newcomer(){ melody(['C5','E5','G5','C6', 1568], 0.09, 'triangle', 0.24); slide(600, 1800, 0.5, 'sine', 0.06, 0.15); },
-    // BGM 開始／停止（多重起動しない）
-    bgmStart() {
-      if (bgmTimer) return;
-      bgmStep = 0;
-      bgmTick();
-      bgmTimer = setInterval(bgmTick, BGM_STEP_MS);
+    // BGM 切替（name: title/floor/result/gameover。null/未知の名前で停止）
+    // enterScreen から背景名と同じ id で呼ばれる。同じ曲なら何もしない（画面内再描画対策）。
+    bgm(name) {
+      if (name === bgmName) return;
+      bgmName = name || null;
+      if (bgmSrc) { try { bgmSrc.stop(); } catch (e) { /* 無視 */ } bgmSrc = null; bgmGain = null; }
+      synthStop();
+      if (!bgmName) return;
+      const e = bgmBufs[bgmName];
+      if (e && typeof e === 'object') bgmPlay(bgmName);
+      else if (e === 'error') { if (bgmName === 'floor') synthStart(); }
+      else bgmLoad(bgmName);
+      if (bgmName === 'title') bgmLoad('floor'); // タイトル中に本編曲を先読み
     },
-    bgmStop() {
-      if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
-    },
+    bgmStop() { this.bgm(null); },
   };
 })();

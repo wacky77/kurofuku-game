@@ -271,7 +271,9 @@ function enterScreen() {
     _lastScreen = State.screen;
     window.scrollTo(0, 0);
   }
-  setPhoneBg(currentBgName());
+  const bg = currentBgName();
+  setPhoneBg(bg);
+  SFX.bgm(bg); // 背景名＝BGM名（title/floor/result/gameover）。同じ曲なら継続
 }
 
 // 画面ごとの背景画像（assets/images/backgrounds/<name>.png）。無ければ従来の下地グラデ。
@@ -363,7 +365,7 @@ function startSelection() {
   State.maxCombo = 0;
   State.castEarnings = {};    // キャスト別売上も run ごとにリセット
   State.dayEarnings = {};
-  SFX.bgmStart();             // BGM開始（スタートボタンのタップが操作許可になる）
+  // BGMは enterScreen が画面に応じて切替（スタートボタンのタップが再生許可になる）
   // 全応募プールからランダムで8人を選出（プレイごとに顔ぶれが変わる）
   State.applicants = pickRandom(CAST_POOL, 8);
   State.screen = 'select';
@@ -710,7 +712,6 @@ function endDay() {
 
   State.screen = 'dayresult';
   const achieved = State.sales >= State.today.goal;
-  if (!achieved) SFX.bgmStop(); // ゲームオーバーはBGMを止めて余韻を消す
   setTimeout(() => achieved ? SFX.fanfare() : SFX.gameover(), 250);
   if (State.rankUp) setTimeout(() => SFX.levelup(), 950); // 昇格ジングル
 
@@ -933,7 +934,6 @@ function toast(msg) {
 
 // 通算成績をリセットしてタイトルへ
 function resetToTitle() {
-  SFX.bgmStop();
   State.day = 1; State.totalSales = 0; State.repeaters = 0; State.roster = [];
   State.repeaterPool = []; State.combo = 0; State.maxCombo = 0;
   State.screen = 'title';

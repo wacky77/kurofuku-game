@@ -12,7 +12,7 @@
   - `css/style.css` — ダーク×ゴールドのキャバ内装、スマホ縦（max-width 420px）
   - `js/data.js` — キャスト/客/イベント/ニーズ/ランク等のデータ
   - `js/avatars.js` — SVG似顔絵の動的生成（キャスト顔・客顔 `customerFace()`）
-  - `js/audio.js` — Web Audio 合成の効果音＋BGM
+  - `js/audio.js` — Web Audio 合成の効果音＋外部音源BGM（`assets/audio/`、下記「音声アセット」参照）
   - `js/achieve.js` — 実績（アチーブメント14種、localStorage永続化＋解除トースト）
   - `js/game.js` — ゲームロジック＆画面描画
   - `manifest.webmanifest` + `sw.js` + `assets/icon.svg` — PWA
@@ -32,7 +32,7 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v27**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v28**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
@@ -44,7 +44,7 @@
 - **客の名前**: 来店ごとに `CUSTOMER_NAMES`(名字40種)からランダム割当→「〇〇さん」表示。リピーター(指名客)は同名で再来店（addRepeater/makeNomination で name を引継ぎ）
 
 ## 実装済み（主要）
-ハイスコア(localStorage Top5)・難易度カーブ・翌日編成(最大2人入替)・連続的中コンボ(最大+40%)・リピーター再来店(指名客)・キャスト育成(EXP/Lv)・効果音＋BGM(Web Audio)・PWA・結果シェア・黒服ランク(通算売上で昇格)・席数拡大(DAY4で5席/DAY7で6席)・キャスト＆客のSVG似顔絵。
+ハイスコア(localStorage Top5)・難易度カーブ・翌日編成(最大2人入替)・連続的中コンボ(最大+40%)・リピーター再来店(指名客)・キャスト育成(EXP/Lv)・効果音(Web Audio)＋画面別BGM(外部音源・v28)・PWA・結果シェア・黒服ランク(通算売上で昇格)・席数拡大(DAY4で5席/DAY7で6席)・キャスト＆客のSVG似顔絵。
 - 目標: `dailyGoal = 300000 + (DAY-1)*55000`
 - ランク: 見習い黒服→黒服→主任→副店長→店長→エリアマネージャー→伝説の黒服（通算売上 0/80万/200万/350万/550万/800万/1200万）
 - **実績14種**（js/achieve.js）: DAY到達系/★5/パーフェクト/コンボ6/指名/太客/リピーター10/通算100万・500万/Lv5/店長昇格。
@@ -75,6 +75,14 @@
   - 来店客: **512px/JPEG(q80)**（custImg が `.jpg` 参照。通常28＋イベント4＝32枚、1枚≈50-82KB／計≈2.0MB。透過なし）。ファイル名＝iconId（＝ペルソナの `id`）。**注意: 理容師のiconIdは `barber`**（納品時 `barbar.png` だったのを `barber.jpg` にリネーム済み）。
   - 背景: **941×1672/JPEG(q70)**（CSS が `.jpg` 参照。1枚≈230-300KB／4枚計≈1.0MB。濃いスクリム下なので低品質でも劣化不可視）
   - 元の高解像度PNGは各 `_src/` サブフォルダに退避（`cast/_src/`・`customers/_src/`・`backgrounds/_src/`＝非配信）。以前の旧キャストアートは `cast/旧画像/`。
+
+## 音声アセット（BGM外部音源化・v28）
+- 置き場: `assets/audio/{title,floor,result,gameover}.mp3`（**ファイル名＝画面id＝背景画像と同じ命名**。外部AI生成、発注プロンプトは `assets/BGM_PROMPTS.md`。ボツ候補・元素材は `assets/audio/_src/` に退避＝非配信）。
+- 再生: `js/audio.js` の `SFX.bgm(name)`。fetch + decodeAudioData + AudioBufferSourceNode(loop) で**ギャップレスループ**（`<audio>` 非使用＝iOSのRange要求とSWの相性問題を回避）。MP3頭尾のエンコーダ無音は `loopRange()` が自動スキップ。読み込み失敗時は floor のみ旧・合成BGM（synthStart）にフォールバック。
+- 切替: `game.js` の `enterScreen()` が背景名と同じ id で `SFX.bgm(bg)` を呼ぶだけ（title/floor/result/gameover が自動で切替。個別の bgmStart/bgmStop 呼び出しは撤去済み）。タイトル表示中に floor を先読み。
+- ミュート: 既存トグルと共通（`muted`）。BGMは停止せず GainNode の音量を0にするだけ（復帰時に曲が途切れない）。
+- キャッシュ: 音声URLは `?v=ASSET_V` 付き・sw.js は `/assets/audio/` を画像と同じ**永続 IMG_CACHE** に保存（版数更新をまたいで保持）。**曲を差し替えたら ASSET_V を上げる**（画像も再取得になる点に注意）。
+- 音量バランス: `BGM_VOL = 0.35`（audio.js）。効果音より控えめ。
 
 ## 残課題
 なし（2026-07-07: 加入演出強化・時間切れのsim反映・バランス再調整・実績システムを実装済み。画像は全アセット外部AI化・圧縮完了）。
