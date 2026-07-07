@@ -32,7 +32,7 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v29**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化／v29: BGM曲別音量）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v30**（v23→v25: sw.jsのCACHE名がv24と1つ先行してズレていたためv25で再同期／v26: 5人以上時のコンパクト表示／v27: 店長以上GAME OVER時のNo.1キャスト祝福／v28: BGM外部音源化／v29: BGM曲別音量／v30: 新人特性〈伸びしろ〉）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
@@ -62,6 +62,11 @@
   客のセリフは従来から `CUSTOMER_TYPES[].lines`→play画面の .cust-line で表示済み。
 - **5人以上のコンパクト表示（v26）**: renderPlay で roster が5人以上なら `.choice-grid.compact`（3列・顔52px・余白圧縮）に切替。
   DAY4の5席/DAY7の6席でも選択ボタンが2行に収まり、iPhone縦(812px)でスクロール不要。4人以下は従来の2列のまま。
+- **新人特性〈伸びしろ〉（v30）**: `rookie: true` のキャスト（6人）は **EXP獲得2倍＋Lvアップのたび一番低い能力+1**（上限5・同率は
+  ランダム。game.js の `ROOKIE` / `rookieStatUp()`、成長はrun内のみ＝rosterのstatsコピーに加算）。初期ステが低い新人を「場数を踏むと
+  育つ」投資枠にした（ユーザー発案）。表示: 選抜カード・加入お披露目の `.rookie-trait` 行「🌱 伸びしろ：成長2倍・Lvアップで能力UP」、
+  詳細モーダルの特性説明、結果ポップのLvアップ行に「単価+1！」等（`.res-statup`、result.statUp = {stat: 上昇量}）。
+  sim確認済み: 到達率への影響は誤差範囲（最適D6 77%不変）＝新人を選んだ時だけ効くバフで全体難度は不変。
 - **店長以上GAME OVERの祝福（v27）**: 通算売上が店長(rank index 4)以上でのゲームオーバー時、renderDayResult が
   `State.castEarnings` の通算No.1キャストからのねぎらいカード（.gm-celebrate、GAME OVER見出し直下）を表示。
   セリフは CAST_VOICES の `gm_tencho`/`gm_area`/`gm_legend`（9性格タイプ×3ランク×各2本）から castLine で抽選。副店長以下は非表示。

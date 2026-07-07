@@ -40,10 +40,26 @@ const NOMINATION = {
   chance: 0.35,      // 各来店枠が「指名客」になる確率（プール内に有効な指名先がある時）
   bonusMult: 1.4,    // 指名に正しく応えた時の売上倍率
 };
+// 新人特性〈伸びしろ〉：初期ステは低いが場数を踏むと育つ
+const ROOKIE = {
+  expMult: 2,        // EXP獲得2倍（レベルが早く上がる）
+  statCap: 5,        // 成長で上げられる能力の上限
+};
+const STAT_LABELS = { heal: '癒し', talk: 'トーク', price: '単価', smile: '笑顔' };
 
 // EXPからレベルを求める（1〜maxLevel）
 function levelFromExp(exp) {
   return Math.min(LEVEL.maxLevel, 1 + Math.floor((exp || 0) / LEVEL.expPerLevel));
+}
+// 新人の成長：一番低い能力（同率は複数からランダム）を+1する。全部上限なら null
+function rookieStatUp(cast) {
+  const keys = Object.keys(STAT_LABELS).filter(k => cast.stats[k] < ROOKIE.statCap);
+  if (!keys.length) return null;
+  const min = Math.min(...keys.map(k => cast.stats[k]));
+  const lows = keys.filter(k => cast.stats[k] === min);
+  const key = lows[Math.floor(Math.random() * lows.length)];
+  cast.stats[key]++;
+  return key;
 }
 // 連続コンボの売上倍率（2連続から効く）
 function comboMult(combo) {
@@ -382,6 +398,7 @@ function renderSelect() {
         <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
         <div class="cast-tag">${c.tag}</div>
         <div class="cast-profile">${c.profile || ''}</div>
+        ${c.rookie ? '<div class="rookie-trait">🌱 伸びしろ：成長2倍・Lvアップで能力UP</div>' : ''}
         <div class="cast-stats">
           ${statRows(c.stats)}
         </div>
@@ -565,12 +582,23 @@ function chooseCast(id) {
   result.combo = State.combo;
   result.comboBonus = comboStep;
 
-  // 育成EXP（★の数だけ加算。指名成功はボーナス）
+  // 育成EXP（★の数だけ加算。指名成功はボーナス。新人は場数で2倍成長）
   const before = levelFromExp(cast.exp);
-  cast.exp = (cast.exp || 0) + result.star + (result.nominateHit === true ? 2 : 0);
+  const gained = result.star + (result.nominateHit === true ? 2 : 0);
+  cast.exp = (cast.exp || 0) + gained * (cast.rookie ? ROOKIE.expMult : 1);
   const after = levelFromExp(cast.exp);
   result.leveledUp = after > before;
   result.newLevel = after;
+  // 新人の〈伸びしろ〉：Lvが上がるたび一番低い能力が+1（result.statUp = {stat: 上昇量}）
+  result.statUp = null;
+  if (cast.rookie) {
+    for (let i = before; i < after; i++) {
+      const key = rookieStatUp(cast);
+      if (!key) break;
+      result.statUp = result.statUp || {};
+      result.statUp[key] = (result.statUp[key] || 0) + 1;
+    }
+  }
 
   State.sales += result.sales;
   if (result.gotRepeater) State.repeaters++;
@@ -655,8 +683,11 @@ function showResult(cast, result) {
   const comboLine = result.comboBonus > 0
     ? `<div class="res-combo">🔥 ${result.combo}連続的中ボーナス <b>+${Math.round(result.comboBonus * 100)}%</b></div>`
     : '';
+  const statUpTxt = result.statUp
+    ? ` <span class="res-statup">${Object.entries(result.statUp).map(([k, n]) => `${STAT_LABELS[k]}+${n}`).join('・')}！</span>`
+    : '';
   const levelLine = result.leveledUp && cast
-    ? `<div class="res-level">⬆️ ${cast.name} が Lv${result.newLevel} に成長！ <span class="res-level-say">「${castLine(cast, 'levelup')}」</span></div>`
+    ? `<div class="res-level">⬆️ ${cast.name} が Lv${result.newLevel} に成長！${statUpTxt} <span class="res-level-say">「${castLine(cast, 'levelup')}」</span></div>`
     : '';
   // キャストの一言（性格タイプ別。時間切れ時は cast が無いので出さない）
   const sayKind = result.nominateHit === true ? 'nominate'
@@ -1035,6 +1066,7 @@ function showCastDetail(id) {
         <div class="detail-lv">Lv<b>${lv}</b></div>
       </div>
       ${c.profile ? `<div class="detail-profile">${c.profile}</div>` : ''}
+      ${c.rookie ? '<div class="rookie-trait">🌱 新人特性〈伸びしろ〉：EXP獲得2倍・Lvアップのたび一番低い能力+1</div>' : ''}
       <div class="detail-exp">
         <div class="detail-exp-top"><span>育成EXP</span><span>${expLabel}</span></div>
         <div class="exp-bar ${isMax ? 'max' : ''}"><i style="width:${expPct}%"></i></div>
@@ -1113,6 +1145,7 @@ function showNewcomers(incoming) {
       <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
       <div class="cast-tag">${c.tag}</div>
       <div class="nc-say">「${castLine(c, 'hello')}」</div>
+      ${c.rookie ? '<div class="rookie-trait">🌱 伸びしろ：成長2倍・Lvアップで能力UP</div>' : ''}
       <div class="cast-stats">
         ${statRows(c.stats)}
       </div>
