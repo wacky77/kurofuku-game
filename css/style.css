@@ -183,23 +183,38 @@ body {
 .newcomer .cast-stats > div { display: flex; align-items: baseline; }
 
 /* ---------- プレイ画面 ---------- */
-.hud { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 2px; }
-.hud span:nth-child(3) { color: var(--gold); font-weight: 700; }
+.play-screen { gap: 11px; }
+.hud { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); padding: 2px; }
+.hud-day {
+  font-weight: 800; font-size: 11px; letter-spacing: .08em; color: var(--gold);
+  border: 1px solid var(--gold-dim); border-radius: 8px; padding: 2px 8px;
+}
+.hud-count { font-weight: 700; font-size: 14px; color: var(--text); }
+.hud-count small { font-weight: 400; font-size: 11px; color: var(--muted); }
+.hud .mute-btn { margin-left: auto; }
 
-.goalbar { position: relative; height: 20px; background: var(--panel); border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
-.goalbar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .4s; }
-.goalbar-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text); }
+.goalbar { position: relative; height: 24px; background: var(--panel); border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.goalbar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .4s; opacity: .85; }
+.goalbar-txt {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-size: 11px; color: var(--muted); text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.goalbar-txt b { font-size: 12.5px; color: var(--text); }
 
+/* タイマーは客カードの右上に重ねて縦スペースを節約 */
 .timer {
-  align-self: center; width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--gold);
-  display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: var(--gold);
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid var(--gold);
+  background: rgba(13,13,18,.55); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 900; color: var(--gold);
 }
 .timer.urgent { border-color: var(--bad); color: var(--bad); animation: pulse .5s infinite; }
 @keyframes pulse { 50% { transform: scale(1.12); } }
 
 .customer {
+  position: relative;
   background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px;
-  padding: 16px; text-align: center;
+  padding: 14px 16px; text-align: center;
 }
 .customer.event { border-color: var(--pink); background: linear-gradient(160deg, #2a1620, var(--panel)); }
 .cust-emoji { display: flex; justify-content: center; margin-bottom: 2px; }
@@ -207,12 +222,17 @@ body {
 /* 外部AI画像（<img>）も似顔絵SVGと同じ枠に収める */
 img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .cust-name { font-weight: 800; font-size: 18px; color: var(--gold); margin: 4px 0 0; letter-spacing: .02em; }
-.cust-title { font-weight: 700; margin: 2px 0 4px; font-size: 13px; color: var(--muted); }
+/* 称号と年代・状況は1行にまとめて表示（・区切り） */
+.cust-title { font-weight: 700; margin: 2px 0 4px; font-size: 12px; color: var(--muted); }
+.cust-sep { font-weight: 400; opacity: .6; }
 .customer.event .cust-title { color: var(--pink); }
-.cust-profile { font-size: 13px; color: var(--muted); }
 .cust-line { font-size: 13px; color: var(--text); font-style: italic; opacity: .82; margin: 6px auto 2px; max-width: 90%; }
-.cust-need { font-size: 16px; color: var(--gold); margin: 8px 0 4px; }
-.cust-budget { font-size: 13px; color: var(--text); }
+.cust-need { font-size: 16px; color: var(--gold); margin: 8px 0 6px; }
+.cust-budget {
+  display: inline-block; font-size: 12px; font-weight: 700; color: var(--text);
+  background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 12px; margin-top: 2px;
+}
 /* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう） */
 .cust-need.vague { font-size: 13.5px; color: var(--text); font-style: italic; margin: 8px auto 4px; max-width: 92%; line-height: 1.5; }
 .cust-need.vague b { display: block; font-style: normal; font-size: 11px; color: var(--pink); letter-spacing: .06em; margin-bottom: 1px; }
@@ -243,7 +263,6 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 /* 次のお客の予告（体力配分のプランニング用） */
 .next-cust { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 10px; }
 
-.pick-label { text-align: center; font-size: 13px; color: var(--muted); }
 .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .cast-choice {
   background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px;
@@ -304,8 +323,17 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 .day-goal { color: var(--muted); font-size: 13px; margin-top: -10px; }
-.result-stats { display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--muted); margin: 8px 0; }
-.result-stats b { color: var(--text); }
+/* 成績は2×2のチップで一覧性を上げる */
+.result-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  width: 100%; max-width: 320px; margin: 6px auto;
+}
+.result-stats > div {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.result-stats small { font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+.result-stats b { font-size: 15px; color: var(--text); }
 .result-screen .btn { max-width: 280px; }
 
 /* ---------- ハイスコア／ランキング ---------- */

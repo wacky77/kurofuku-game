@@ -409,7 +409,7 @@ function renderSelect() {
         <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
         <div class="cast-tag">${c.tag}</div>
         <div class="cast-profile">${c.profile || ''}</div>
-        ${c.rookie ? '<div class="rookie-trait">🌱 伸びしろ：成長2倍・Lvアップで能力UP</div>' : ''}
+        ${c.rookie ? '<div class="rookie-trait">🌱 成長2倍・Lvアップで能力+1</div>' : ''}
         <div class="cast-stats">
           ${statRows(c.stats)}
         </div>
@@ -420,7 +420,7 @@ function renderSelect() {
   app.innerHTML = `
     <div class="screen">
       <h2 class="head">キャストを4人選ぶ <span id="cnt">(${State.selectedIds.length}/4)</span></h2>
-      <p class="head-sub">8人の応募者からお店のキャストを選抜しよう<br><span class="warn">⚠️ 本番では星が見えなくなる！ 誰が何が得意かを顔で覚えよう</span></p>
+      <p class="head-sub"><span class="warn">⚠️ 本番中は星が見えない！ 顔と得意を覚えよう</span></p>
       <div class="cast-grid">${cards}</div>
       <button class="btn btn-primary" id="goBtn" ${State.selectedIds.length === 4 ? '' : 'disabled'}>この4人で開店！</button>
     </div>`;
@@ -509,37 +509,34 @@ function renderPlay() {
   // イベント・指名は「気配」だけ見せて登場のサプライズは残す。
   const nx = State.customers[State.customerIndex + 1];
   const nextLine = !nx
-    ? '🌙 このお客様で本日ラスト！'
-    : nx.isEvent ? '次のお客様: ⚡ 何かが起きそうな気配…'
-    : nx.isNomination ? '次のお客様: 💐 常連さんの予感…'
-    : `次のお客様: ${nx.emoji} ${nx.title}`;
+    ? '🌙 ラストのお客様！'
+    : nx.isEvent ? '次 ⚡ 何かが起きそうな気配…'
+    : nx.isNomination ? '次 💐 常連さんの予感…'
+    : `次 ${nx.emoji} ${nx.title}`;
 
   app.innerHTML = `
     <div class="screen play-screen">
       <div class="hud">
-        <span>DAY ${State.day}</span>
-        <span>${State.customerIndex + 1}/${State.customers.length}組目</span>
-        <span>売上 ${yen(State.sales)}</span>
+        <span class="hud-day">DAY ${State.day}</span>
+        <span class="hud-count">${State.customerIndex + 1}<small> / ${State.customers.length}組</small></span>
         <button class="mute-btn" id="muteBtn" title="効果音">${SFX.muted ? '🔇' : '🔊'}</button>
       </div>
-      <div class="goalbar"><div class="goalbar-fill" style="width:${goalPct}%"></div><span class="goalbar-txt">目標 ${yen(State.today.goal)}</span></div>
+      <div class="goalbar"><div class="goalbar-fill" style="width:${goalPct}%"></div><span class="goalbar-txt"><b>${yen(State.sales)}</b> / ${yen(State.today.goal)}</span></div>
 
       ${comboBadge}
-      <div class="timer" id="timer">${State.timeLeft}</div>
 
       <div class="customer ${custClass}">
+        <div class="timer" id="timer">${State.timeLeft}</div>
         <div class="cust-emoji">${customerFace(c, 100)}</div>
         ${c.name ? `<div class="cust-name">${c.name}</div>` : ''}
-        <div class="cust-title">${custTitle}</div>
-        <div class="cust-profile">${c.profile}</div>
+        <div class="cust-title">${custTitle}${c.profile ? `<span class="cust-sep"> ・ </span>${c.profile}` : ''}</div>
         ${c.line ? `<div class="cust-line">“${c.line}”</div>` : ''}
         ${c.vague
           ? `<div class="cust-need vague"><b>🤔 本音を察して…</b>${c.hint}</div>`
           : `<div class="cust-need">「${c.desc}」</div>`}
-        <div class="cust-budget">予算 ${yen(c.budget)}</div>
+        <div class="cust-budget">💰 ${yen(c.budget)}</div>
       </div>
 
-      <p class="pick-label">誰を付ける？</p>
       <div class="choice-grid${compact ? ' compact' : ''}">${casts}</div>
       <div class="next-cust">${nextLine}</div>
     </div>`;
@@ -920,10 +917,10 @@ function renderDayResult() {
       <div class="big-sales" id="bigSales">${yen(State.sales)}</div>
       <p class="day-goal">目標 ${yen(State.today.goal)}</p>
       <div class="result-stats">
-        <div>${achieved ? '通算売上' : '通算売上（DAY' + State.day + 'まで）'} <b>${yen(State.totalSales)}</b></div>
-        <div>獲得リピーター <b>${State.repeaters}人</b></div>
-        <div>付け回し的中 <b>${hits}/${State.log.length}</b></div>
-        <div>最大コンボ <b>${State.maxCombo}連続</b></div>
+        <div><small>通算売上</small><b>${yen(State.totalSales)}</b></div>
+        <div><small>リピーター</small><b>${State.repeaters}人</b></div>
+        <div><small>付け回し的中</small><b>${hits}/${State.log.length}</b></div>
+        <div><small>最大コンボ</small><b>${State.maxCombo}連続</b></div>
       </div>
 
       ${rankSection}
@@ -1059,7 +1056,7 @@ function renderRosterEdit() {
         ${harder}
       </div>
       ${seatBanner}
-      <p class="head-sub">入れ替えたいキャストを選ぼう（最大2人）<br><span class="warn">🔄 交代要員はランダムに入店！誰が来るかはお楽しみ</span></p>
+      <p class="head-sub"><span class="warn">🔄 入れ替えは最大2人・交代要員はランダムに入店</span></p>
       <div class="cast-grid">${cards}</div>
       <button class="btn btn-primary" id="goBtn">${btnLabel}</button>
     </div>`;
@@ -1178,7 +1175,7 @@ function showNewcomers(incoming) {
       <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
       <div class="cast-tag">${c.tag}</div>
       <div class="nc-say">「${castLine(c, 'hello')}」</div>
-      ${c.rookie ? '<div class="rookie-trait">🌱 伸びしろ：成長2倍・Lvアップで能力UP</div>' : ''}
+      ${c.rookie ? '<div class="rookie-trait">🌱 成長2倍・Lvアップで能力+1</div>' : ''}
       <div class="cast-stats">
         ${statRows(c.stats)}
       </div>
