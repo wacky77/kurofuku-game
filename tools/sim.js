@@ -131,15 +131,14 @@ function runOnce(policy) {
     State.selectedIds = [];
     State.swapOutIds = pickSwaps(State.roster);
     State.screen = 'roster';
-    confirmSwap();
-    // 交代画面（swappick）はクリック待ちなので、候補プールから
-    // 能力合計が高い順にN人選ぶ（実プレイヤー相当）で即確定する
-    if (State.screen === 'swappick') {
+    ensureSwapPool();
+    // 候補プールから能力合計が高い順にN人選ぶ（実プレイヤー相当）で即確定する
+    if (State.swapOutIds.length > 0) {
       const total = (c) => Object.values(c.stats).reduce((a, b) => a + b, 0);
-      const pool = Object.values(State.swapCandidates).flat().sort((a, b) => total(b) - total(a));
+      const pool = [...State.swapPool].sort((a, b) => total(b) - total(a));
       State.swapSel = pool.slice(0, State.swapOutIds.length).map(c => c.id);
-      applySwap();
     }
+    applySwap();
   }
 }
 

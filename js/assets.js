@@ -7,14 +7,14 @@
 //   1) 該当セット(cast / customer / bg)に id を足す
 //   2) ASSET_V を +1（下の index.html / sw.js のキャッシュ版数も揃える）
 // ===============================================
-const ASSET_V = 23;
+const ASSET_V = 39;
 
 const ASSET_IMG = {
-  // assets/images/cast/<id>.jpg（全28人 画像化済み。512px/JPEG圧縮。元PNGは cast/_src/ に退避）
+  // assets/images/cast/<id>.jpg（全29人 画像化済み。512px/JPEG圧縮。元PNGは cast/_src/ に退避）
   cast: new Set([
     'akari', 'aya', 'chisa', 'emi', 'hina', 'kana', 'karen', 'mayu', 'mina', 'momo',
     'nana', 'noa', 'rei', 'reina', 'riko', 'runa', 'sara', 'sena', 'shion', 'yuki',
-    'miku', 'rui', 'arisa', 'koharu', 'maria', 'yua', 'rara', 'tsubasa',
+    'miku', 'rui', 'arisa', 'koharu', 'maria', 'yua', 'rara', 'tsubasa', 'tsukasa',
   ]),
   // assets/images/customers/<iconId>.jpg（通常ペルソナ28＋イベント4＝全32種 画像化済み。512px/JPEG圧縮。元PNGは customers/_src/ に退避）
   customer: new Set([

@@ -32,19 +32,19 @@
 - PWAキャッシュがあるため、更新時は下記のキャッシュ規約どおり版数を上げないとiPhone側に反映されない。
 
 ## キャッシュ規約（重要）
-`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v36**（v28: BGM外部音源化／v29: BGM曲別音量／v30: 新人特性〈伸びしろ〉／v31: 客の見極め・来店演出・振り返り強化／v32: 高単価ナーフ＝イベント重み付け＋目標再調整／v33: UI整理＝文字削減・レイアウト圧縮／v34: 交代の後任を候補2名から選択／v35: 交代画面に「残留」選択肢／v36: 交代を枠の紐付けなしのプール選択に＝現メンバーN人＋候補2N人から残るN人を自由に組み合わせ／v37: ふりかえりに指名バッジ＝💐本指名（指名で来店）・🎀場内指名（★4以上でその場獲得））。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
+`index.html` の `<script>`/`<link>` は `?v=N` 付き。**アセット更新時は index.html の `?v=N`・`sw.js` の `CACHE`/`ASSETS`・`js/assets.js` の `ASSET_V` の版数を揃えて上げる**（でないと旧版が配信される）。**現在 v39**（v28: BGM外部音源化／v29: BGM曲別音量／v30: 新人特性〈伸びしろ〉／v31: 客の見極め・来店演出・振り返り強化／v32: 高単価ナーフ＝イベント重み付け＋目標再調整／v33: UI整理＝文字削減・レイアウト圧縮／v34: 交代の後任を候補2名から選択／v35: 交代画面に「残留」選択肢／v36: 交代を枠の紐付けなしのプール選択に＝現メンバーN人＋候補2N人から残るN人を自由に組み合わせ／v37: ふりかえりに指名バッジ＝💐本指名（指名で来店）・🎀場内指名（★4以上でその場獲得）／v38: 新キャスト「つかさ」追加＝ギャル+語尾「ござる」の新voiceタイプ gal_gozaru／v39: 交代を1画面に統合（swappick画面廃止）＝現メンバーカードのタップで交代指定⇄残留トグル、下段に常時表示の候補プールから空き枠分だけ選択）。背景画像は CSS(`#phone[data-bg]`) から参照するので、背景差し替え時は `css/style.css` の url(...) 版数も忘れず揃える。
 
 ## ゲームのコアループ
 8人の応募からキャスト4人選抜 → 客来店（ニーズ: 癒し/トーク/高単価/笑顔）→ 制限時間内に付けるキャスト選択 → マッチ度で★1〜5・売上変動・★4以上でリピーター獲得 → 日次売上目標達成でDAY継続、未達でGAME OVER。
 
 主要データID（画像ファイル名と対応・`assets/IMAGE_SPEC.md` 参照）:
 - **ニーズ**: `heal`(癒し) / `talk`(トーク) / `price`(高単価) / `smile`(笑顔)
-- **キャスト28人**: aya, rei, mina, karen, yuki, momo, sara, noa, runa, hina, sena, akari, chisa, mayu, emi, riko, nana, reina, shion, kana, miku, rui, arisa, koharu, maria, yua, rara, tsubasa
+- **キャスト29人**: aya, rei, mina, karen, yuki, momo, sara, noa, runa, hina, sena, akari, chisa, mayu, emi, riko, nana, reina, shion, kana, miku, rui, arisa, koharu, maria, yua, rara, tsubasa, tsukasa
 - **客ペルソナ28種**: salary, young, bucho, oyakata, doctor, lawyer, itceo, band, prof, chef, farmer, comedian, trader, sensei, teacher, police, pilot, fisher, designer, realtor, dentist, actor, athlete, mayor, novelist, barber, driver, youtuber ＋イベント birthday, ceo, drunk, vip（計32アイコン）
 - **客の名前**: 来店ごとに `CUSTOMER_NAMES`(名字40種)からランダム割当→「〇〇さん」表示。リピーター(指名客)は同名で再来店（addRepeater/makeNomination で name を引継ぎ）
 
 ## 実装済み（主要）
-ハイスコア(localStorage Top5)・難易度カーブ・翌日編成(最大2人入替、v34〜swappick画面で後任を確認してから選択。候補は外す1人につき2名を一度だけ抽選し State.swapCandidates に保持＝編成に戻っても引き直し不可。v36〜枠の紐付けなしのプール選択＝外すN人の「残留」カード（体力・翌日回復量つき）＋候補2N人から残るN人を State.swapSel に自由選択、残留も同枠候補2人採用も可。simは候補プールから能力合計上位N人を自動選択で対応済み・到達率への影響は誤差範囲)・連続的中コンボ(最大+40%)・リピーター再来店(指名客)・キャスト育成(EXP/Lv)・効果音(Web Audio)＋画面別BGM(外部音源・v28)・PWA・結果シェア・黒服ランク(通算売上で昇格)・席数拡大(DAY4で5席/DAY7で6席)・キャスト＆客のSVG似顔絵。
+ハイスコア(localStorage Top5)・難易度カーブ・翌日編成(最大2人入替、v39〜1画面完結＝現メンバーカードのタップで交代指定⇄残留トグル、下段に常時表示の候補プール（Math.min(4, CAST_POOL.length - roster.length)人、State.day単位で1回だけ抽選しState.swapPoolに保持＝再描画で引き直し不可）から交代指定した人数ぶんだけ State.swapSel に選択。交代指定を取り消すと選択済み候補も上限に合わせて自動で切り詰め。simは候補プールから能力合計上位N人を自動選択で対応済み・到達率への影響は誤差範囲)・連続的中コンボ(最大+40%)・リピーター再来店(指名客)・キャスト育成(EXP/Lv)・効果音(Web Audio)＋画面別BGM(外部音源・v28)・PWA・結果シェア・黒服ランク(通算売上で昇格)・席数拡大(DAY4で5席/DAY7で6席)・キャスト＆客のSVG似顔絵。
 - 目標: `dailyGoal = 300000 + (DAY-1)*55000`
 - ランク: 見習い黒服→黒服→主任→副店長→店長→エリアマネージャー→伝説の黒服（通算売上 0/80万/200万/350万/550万/800万/1200万）
 - **実績14種**（js/achieve.js）: DAY到達系/★5/パーフェクト/コンボ6/指名/太客/リピーター10/通算100万・500万/Lv5/店長昇格。

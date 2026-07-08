@@ -164,6 +164,7 @@ body {
   border-radius: 6px; padding: 1px 6px;
 }
 .sp-section { margin-bottom: 16px; }
+.cast-card.disabled { opacity: .4; pointer-events: none; }
 .sp-out { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; color: var(--muted); }
 .sp-out .avatar { border-radius: 50%; display: block; }
 .sp-out-name { color: var(--gold); font-weight: 700; font-size: 15px; }

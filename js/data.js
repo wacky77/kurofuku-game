@@ -62,6 +62,8 @@ const CAST_POOL = [
     face: { bg: '#1e2632', bg2: '#324058', skin: '#ffdcc8', hair: '#2a3040', hair2: '#1a2030', eye: '#6a7a9a', hairStyle: 'wavy',     mouth: 'lips',   acc: 'none',   earring: '#d8d8e0' } },
   { id: 'tsubasa',name:'ツバサ', emoji: '⚡', tag: '元気',     stats: { heal: 3, talk: 4, price: 2, smile: 5 }, rookie: false,
     face: { bg: '#2e2a1e', bg2: '#4c4630', skin: '#ffe0cf', hair: '#d0a030', hair2: '#b08020', eye: '#a07830', hairStyle: 'short',    mouth: 'smile',  acc: 'moon',   accColor: '#ffe89a' } },
+  { id: 'tsukasa',name:'つかさ', emoji: '🗡️', tag: 'トーク',   stats: { heal: 2, talk: 5, price: 3, smile: 4 }, rookie: false,
+    face: { bg: '#3a1e28', bg2: '#5c3048', skin: '#ffdcc8', hair: '#ff8a3c', hair2: '#e06a1e', eye: '#ff5a3a', hairStyle: 'ponytail', mouth: 'grin',   acc: 'star',   accColor: '#ffd23a' } },
 ];
 
 // --- キャストのキャラ付け（一言プロフィール＋セリフの性格タイプ） ---
@@ -96,6 +98,7 @@ const CAST_PERSONA = {
   yua:    { voice: 'iyashi',  profile: '囁くだけで客の血圧が下がると噂の美声。' },
   rara:   { voice: 'pro',     profile: '宝石好き。「男の誠意はボトルで示すもの」が信条。' },
   tsubasa:{ voice: 'genki',   profile: '元・陸上部エース。入店3秒でテーブルの空気を変える。' },
+  tsukasa:{ voice: 'gal_gozaru', profile: '中身はガチギャル。なぜか時代劇マニアで、口癖は「〜でござる」。' },
 };
 CAST_POOL.forEach(c => Object.assign(c, CAST_PERSONA[c.id]));
 
@@ -201,6 +204,17 @@ const CAST_VOICES = {
     gm_tencho: ['店長おめでと〜！マジ有能すぎて草！', 'うちを一番稼がせたの、あんたが初めてだよ？誇っていいって！'],
     gm_area:   ['エリアマネージャーとかヤバ！うちのボス、ガチのやつじゃん！', 'ここまで来れたのあんたのおかげ！マジ感謝しかない！'],
     gm_legend: ['伝説とか実在するんだ…目の前にいるんだけど！！', 'うち、孫の代まで語るわ。「伝説の黒服はうちの相方だった」って！'],
+  },
+  gal_gozaru: {
+    hello:    ['よろしくでござる〜！アゲてこ！', 'うちに任せなって、でござる！'],
+    great:    ['ウケる、めっちゃハマったでござる！', '神接客きたでござる〜！うちってば天才？', 'お客さん、うちのファンになったっぽいでござる！'],
+    ok:       ['ぼちぼちって感じでござる〜', 'まあまあかな！ドンマイうち、でござる'],
+    bad:      ['やば、全然ハマんなかったでござる〜', 'ノリ違いだったわ〜、ごめんでござる！'],
+    nominate: ['え、うち指名でござる！？アガる〜！', 'また来てくれたん？最高でござる！'],
+    levelup:  ['うち、レベち♪になったでござる！'],
+    gm_tencho: ['店長おめでとでござる〜！マジ有能すぎて草！', 'うちを一番稼がせたの、あんたが初めてでござるよ？誇っていいって！'],
+    gm_area:   ['エリアマネージャーとかヤバでござる！うちのボス、ガチのやつじゃん！', 'ここまで来れたのあんたのおかげでござる！マジ感謝しかない！'],
+    gm_legend: ['伝説とか実在するんでござる…目の前にいるんだけど！！', 'うち、孫の代まで語るでござる。「伝説の黒服はうちの相方だった」って！'],
   },
 };
 
