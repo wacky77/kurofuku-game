@@ -696,6 +696,8 @@ function recordLog(chosenCast, result, timeout) {
     optimalId: optimal.id,
     hit: !timeout && chosenStat === maxStat, // 最高stat帯を選べていれば正解
     timeout: !!timeout,
+    nomination: !!cust.isNomination,        // 本指名（この子目当てで来店した常連）
+    gotRepeater: !!result.gotRepeater,      // 場内指名（★4以上でその場で指名をもらった）
   });
   // キャスト別売上を蓄積（付けたキャストがいる時のみ）：通算＋その日
   if (chosenCast && result.sales > 0) {
@@ -843,10 +845,13 @@ function renderDayResult() {
       ? avatarSVG(l.chosenId, 34)
       : '<span class="rv-timeout">🕒</span>';
     const yourResult = l.timeout ? '時間切れ' : stars(l.star);
+    // 指名バッジ: 本指名（指名で来店）が優先、通常客は場内指名（その場で指名獲得）を表示
+    const nomBadge = l.nomination ? '<span class="rv-nom hon">💐本指名</span>'
+      : l.gotRepeater ? '<span class="rv-nom jonai">🎀場内指名</span>' : '';
     return `
       <div class="rv-row ${l.hit ? 'ok' : 'ng'}">
         <div class="rv-top">
-          <span class="rv-cust">${l.custEmoji} ${l.custName ? `${l.custName} ` : ''}<small>${l.custLabel}</small></span>
+          <span class="rv-cust">${l.custEmoji} ${l.custName ? `${l.custName} ` : ''}<small>${l.custLabel}</small>${nomBadge}</span>
           <span class="rv-right"><span class="rv-mark">${l.hit ? '○ 正解' : '× 惜しい'}</span><span class="rv-sales">+${yen(l.sales)}</span></span>
         </div>
         <div class="rv-bottom">

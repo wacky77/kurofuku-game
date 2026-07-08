@@ -417,6 +417,10 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .rv-top { display: flex; justify-content: space-between; align-items: center; }
 .rv-cust { font-size: 13px; color: var(--text); }
 .rv-cust small { font-size: 11px; color: var(--muted); }
+/* 指名バッジ: 本指名（指名で来店）はピンク、場内指名（その場で獲得）は金 */
+.rv-nom { font-size: 9.5px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-left: 5px; white-space: nowrap; vertical-align: 1px; }
+.rv-nom.hon { background: rgba(255,92,138,.16); color: var(--pink); border: 1px solid rgba(255,92,138,.55); }
+.rv-nom.jonai { background: rgba(230,193,75,.14); color: var(--gold); border: 1px solid rgba(230,193,75,.5); }
 .rv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .rv-sales { font-size: 11px; font-weight: 700; color: var(--gold); }
 .rv-mark { font-size: 12px; font-weight: 700; }
