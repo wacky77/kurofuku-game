@@ -8,6 +8,8 @@ const State = {
   applicants: [],       // 今回の応募者8人（CAST_POOL からランダム選出）
   selectedIds: [],      // キャスト選抜中に選んだID
   swapOutIds: [],       // 翌日に入れ替える（外す）キャストのID（最大2人）
+  swapCandidates: {},   // 後任候補（外すID → 候補2名の配列）。編成に戻っても引き直さない
+  swapSel: [],          // 交代画面で選んだメンバーのID（現メンバー＝残留・候補＝入店を自由に組み合わせ）
   day: 1,
   today: null,          // その日の実効難易度設定（difficulty(day)）
   customerIndex: 0,     // その日の何組目か
@@ -304,7 +306,7 @@ function enterScreen() {
 }
 
 // 画面ごとの背景画像（assets/images/backgrounds/<name>.png）。無ければ従来の下地グラデ。
-const SCREEN_BG = { title: 'title', select: 'floor', roster: 'floor', play: 'floor' };
+const SCREEN_BG = { title: 'title', select: 'floor', roster: 'floor', swappick: 'floor', play: 'floor' };
 function currentBgName() {
   if (State.screen === 'dayresult')
     return (State.today && State.sales >= State.today.goal) ? 'result' : 'gameover';
@@ -321,6 +323,7 @@ function render() {
   if (State.screen === 'title')      renderTitle();
   else if (State.screen === 'select')    renderSelect();
   else if (State.screen === 'roster')    renderRosterEdit();
+  else if (State.screen === 'swappick')  renderSwapPick();
   else if (State.screen === 'play')      renderPlay();
   else if (State.screen === 'dayresult') renderDayResult();
 }
@@ -949,6 +952,7 @@ function renderDayResult() {
       State.day++;
       State.selectedIds = []; // rosterは維持
       State.swapOutIds = [];
+      State.swapCandidates = {}; State.swapSel = [];
       State.screen = 'roster'; // 翌日はまずメンバー編成へ
       render();
     };
@@ -997,6 +1001,7 @@ function toast(msg) {
 function resetToTitle() {
   State.day = 1; State.totalSales = 0; State.repeaters = 0; State.roster = [];
   State.repeaterPool = []; State.combo = 0; State.maxCombo = 0;
+  State.swapOutIds = []; State.swapCandidates = {}; State.swapSel = [];
   State.screen = 'title';
   render();
 }
@@ -1056,7 +1061,7 @@ function renderRosterEdit() {
         ${harder}
       </div>
       ${seatBanner}
-      <p class="head-sub"><span class="warn">🔄 入れ替えは最大2人・交代要員はランダムに入店</span></p>
+      <p class="head-sub"><span class="warn">🔄 入れ替えは最大2人・後任は候補2名から選べる</span></p>
       <div class="cast-grid">${cards}</div>
       <button class="btn btn-primary" id="goBtn">${btnLabel}</button>
     </div>`;
@@ -1128,26 +1133,140 @@ function overnightRecovery(carryOver) {
 }
 
 function confirmSwap() {
-  const outIds = State.swapOutIds;
+  // 入れ替えなしならそのまま開店へ
+  if (State.swapOutIds.length === 0) { applySwap(); return; }
 
-  // 現メンバー以外からランダムに交代要員を選出
+  // 外す選択を変えて戻ってきた場合、不要になった候補を掃除
+  Object.keys(State.swapCandidates).forEach(id => {
+    if (!State.swapOutIds.includes(id)) delete State.swapCandidates[id];
+  });
+
+  // 外す1人につき後任候補2名を選出（編成に戻っても引き直せないよう一度だけ抽選）
   const currentIds = State.roster.map(c => c.id);
-  const available = CAST_POOL.filter(c => !currentIds.includes(c.id));
-  const newcomers = pickRandom(available, outIds.length);
+  State.swapOutIds.forEach(outId => {
+    if (State.swapCandidates[outId]) return;
+    const taken = [...currentIds, ...Object.values(State.swapCandidates).flat().map(c => c.id)];
+    const available = CAST_POOL.filter(c => !taken.includes(c.id));
+    State.swapCandidates[outId] = pickRandom(available, 2);
+  });
+
+  // 選択済みIDのうち、もう画面に出ないもの（外すのをやめた子の候補など）を除去
+  const validIds = [...State.swapOutIds, ...Object.values(State.swapCandidates).flat().map(c => c.id)];
+  State.swapSel = State.swapSel.filter(id => validIds.includes(id));
+
+  State.screen = 'swappick';
+  render();
+}
+
+// ---------- 交代を決める（現メンバー＋候補のプールから、残る顔ぶれを自由に選ぶ） ----------
+// 外すN人ぶんの枠に対し、現メンバーN人（残留）＋候補2N人から好きなN人を選択できる
+function renderSwapPick() {
+  enterScreen();
+  const N = State.swapOutIds.length;
+  const sel = State.swapSel;
+
+  // 現メンバー（残留の選択肢）。疲労（体力・繰越）を候補と見比べられるようにする
+  const outCards = State.swapOutIds.map(id => {
+    const c = State.roster.find(x => x.id === id);
+    const picked = sel.includes(c.id);
+    const lv = levelFromExp(c.exp);
+    const rec = overnightRecovery(c.carryOver || 0);
+    const stamClass = c.stamina < 25 ? 'low' : c.stamina < 50 ? 'mid' : '';
+    return `
+      <div class="cast-card ${picked ? 'picked' : ''}" data-id="${c.id}">
+        <div class="now-tag">残留</div>
+        <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
+        <div class="cast-name">${c.name} <span class="lv-tag">Lv${lv}</span> ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
+        <div class="cast-tag">${c.tag}</div>
+        <div class="cast-stats">
+          ${statRows(c.stats)}
+        </div>
+        <div class="edit-stam">
+          <span class="edit-stam-label">体力 ${c.stamina}% ・ 明日+${rec}</span>
+          <span class="cc-stambar ${stamClass}"><i style="width:${c.stamina}%"></i></span>
+        </div>
+        ${picked ? '<div class="check">✓</div>' : ''}
+      </div>`;
+  }).join('');
+
+  // 後任候補（外した人数×2名のプール。どの枠に入るかの区別はない）
+  const pool = Object.values(State.swapCandidates).flat();
+  const candCards = pool.map(c => {
+    const picked = sel.includes(c.id);
+    return `
+      <div class="cast-card ${picked ? 'picked' : ''}" data-id="${c.id}">
+        <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
+        <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
+        <div class="cast-tag">${c.tag}</div>
+        <div class="cast-profile">${c.profile || ''}</div>
+        ${c.rookie ? '<div class="rookie-trait">🌱 成長2倍・Lvアップで能力+1</div>' : ''}
+        <div class="cast-stats">
+          ${statRows(c.stats)}
+        </div>
+        <div class="edit-stam">
+          <span class="edit-stam-label">体力 100%（フレッシュ入店）</span>
+          <span class="cc-stambar"><i style="width:100%"></i></span>
+        </div>
+        ${picked ? '<div class="check">✓</div>' : ''}
+      </div>`;
+  }).join('');
+
+  const swaps = sel.filter(id => !State.swapOutIds.includes(id)).length;
+  const ok = sel.length === N;
+  const btnLabel = !ok ? `残るメンバーをあと${N - sel.length}人選択`
+    : swaps === 0 ? '交代せずに開店！' : `${swaps}人を入れ替えて開店！`;
+
+  app.innerHTML = `
+    <div class="screen">
+      <h2 class="head">交代を決める <span id="cnt">選択 ${sel.length}/${N}</span></h2>
+      <p class="head-sub"><span class="warn">👀 残留と候補を自由に組み合わせて${N}人選択（引き直しなし）</span></p>
+      <div class="sp-section">
+        <div class="sp-out">🔁 現メンバー（残すならタップ）</div>
+        <div class="cast-grid">${outCards}</div>
+      </div>
+      <div class="sp-section">
+        <div class="sp-out">✨ 後任候補（体力100%で入店）</div>
+        <div class="cast-grid">${candCards}</div>
+      </div>
+      <button class="btn btn-primary" id="goBtn" ${ok ? '' : 'disabled'}>${btnLabel}</button>
+      <button class="btn btn-ghost sp-back" id="backBtn">← 編成に戻る</button>
+    </div>`;
+
+  document.querySelectorAll('.cast-card').forEach(el => {
+    el.onclick = () => toggleSwapPick(el.dataset.id);
+  });
+  document.getElementById('goBtn').onclick = () => { SFX.tap(); applySwap(); };
+  document.getElementById('backBtn').onclick = () => { SFX.tap(); State.screen = 'roster'; render(); };
+}
+
+function toggleSwapPick(id) {
+  const i = State.swapSel.indexOf(id);
+  if (i >= 0) State.swapSel.splice(i, 1);
+  else if (State.swapSel.length < State.swapOutIds.length) State.swapSel.push(id);
+  render();
+}
+
+// 選択結果を roster に反映して開店。選ばれた現メンバーは残留、選ばれた候補が空いた枠に入店
+function applySwap() {
+  const sel = State.swapSel;
+  // 外す対象のうち選ばれなかった子が退店し、選ばれた候補と入れ替わる
+  const leaveIds = State.swapOutIds.filter(id => !sel.includes(id));
+  const joiners = Object.values(State.swapCandidates).flat().filter(c => sel.includes(c.id));
 
   const incoming = [];
   State.roster = State.roster.map(c => {
-    if (outIds.includes(c.id) && newcomers.length) {
-      // 交代要員はフレッシュ（体力全開・繰越0）で入店
-      const base = newcomers.shift();
+    if (leaveIds.includes(c.id) && joiners.length) {
+      // 後任はフレッシュ（体力全開・繰越0）で入店
+      const base = joiners.shift();
       const fresh = { ...base, stats: { ...base.stats }, stamina: 100, carryOver: 0, exp: 0 };
       incoming.push(fresh);
       return fresh;
     }
-    // 繰越メンバー：全開にはせず、繰越回数に応じた量だけ回復
+    // 繰越メンバー（残留含む）：全開にはせず、繰越回数に応じた量だけ回復
     const rec = overnightRecovery(c.carryOver || 0);
     return { ...c, stamina: Math.min(100, c.stamina + rec), carryOver: (c.carryOver || 0) + 1 };
   });
+  State.swapCandidates = {}; State.swapSel = [];
 
   // 席数が増えていれば、空いた席の分だけ新メンバーを追加雇用
   const extraSeats = capacity(State.day) - State.roster.length;

@@ -156,6 +156,18 @@ body {
 /* ---------- メンバー編成（翌日の入れ替え） ---------- */
 .cast-card.swap-out { border-color: var(--pink); background: linear-gradient(160deg, #2a1620, var(--panel)); opacity: .85; }
 .check.swap { width: auto; height: auto; padding: 2px 7px; border-radius: 8px; background: var(--pink); color: #fff; font-size: 11px; font-weight: 700; }
+
+/* ---------- 後任選択（現メンバー＝残留と候補2名を見比べて選ぶ） ---------- */
+.now-tag {
+  position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 700;
+  background: rgba(212,175,55,.16); color: var(--gold); border: 1px solid var(--gold);
+  border-radius: 6px; padding: 1px 6px;
+}
+.sp-section { margin-bottom: 16px; }
+.sp-out { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.sp-out .avatar { border-radius: 50%; display: block; }
+.sp-out-name { color: var(--gold); font-weight: 700; font-size: 15px; }
+.sp-back { margin-top: 8px; }
 .edit-stam { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .edit-stam-label { font-size: 11px; color: var(--muted); }
 .edit-stam .cc-stambar { width: 100%; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
