@@ -7,7 +7,11 @@
 //   1) 該当セット(cast / customer / bg)に id を足す
 //   2) ASSET_V を +1（下の index.html / sw.js のキャッシュ版数も揃える）
 // ===============================================
-const ASSET_V = 39;
+const ASSET_V = 44;
+
+// assets/images/logo.png（透過金色ロゴ画像）。true なら画像、false なら logo-wrap 内の
+// CSSテキストロゴ（.logo/.logo-big、v42実装）にフォールバック。
+const HAS_LOGO = true;
 
 const ASSET_IMG = {
   // assets/images/cast/<id>.jpg（全29人 画像化済み。512px/JPEG圧縮。元PNGは cast/_src/ に退避）

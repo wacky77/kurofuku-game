@@ -93,11 +93,47 @@ body {
 
 /* ---------- タイトル ---------- */
 .title-screen { align-items: center; justify-content: center; text-align: center; gap: 20px; }
-.logo { font-size: 30px; font-weight: 900; letter-spacing: 2px; line-height: 1.2; color: var(--text); }
+.logo-wrap { position: relative; overflow: hidden; padding: 6px 4px; }
+.logo-img { display: block; width: min(320px, 88%); height: auto; margin: 0 auto; filter: drop-shadow(0 3px 10px rgba(0, 0, 0, .45)); }
+.logo-deco {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--gold); font-size: 11px; letter-spacing: 3px; margin: 2px 0;
+  text-shadow: 0 0 6px rgba(230, 193, 75, .6);
+}
+.logo-deco::before, .logo-deco::after {
+  content: ''; flex: 1; max-width: 56px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.logo {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 28px; font-weight: 900; letter-spacing: 3px; line-height: 1.35;
+  background: linear-gradient(160deg, #fffdf3 0%, #ffe9a0 30%, var(--gold) 55%, #fff6cf 72%, var(--gold) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, .5),
+    0 2px 3px rgba(0, 0, 0, .45),
+    0 0 20px rgba(230, 193, 75, .55);
+}
 .logo-big {
-  font-size: 46px;
-  background: linear-gradient(135deg, var(--gold), #fff2b8, var(--gold));
+  font-size: 44px;
+  background: linear-gradient(160deg, #fffdf3 0%, #ffe9a0 28%, var(--gold) 52%, #fff6cf 70%, var(--gold) 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, .55),
+    0 2px 4px rgba(0, 0, 0, .5),
+    0 0 28px rgba(230, 193, 75, .65);
+}
+.logo-wrap::after {
+  content: '';
+  position: absolute; top: 0; left: -60%; width: 35%; height: 100%;
+  background: linear-gradient(75deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: skewX(-20deg);
+  animation: logoShine 3.2s ease-in-out .5s 2;
+  pointer-events: none;
+}
+@keyframes logoShine {
+  0%, 5% { left: -60%; }
+  45%, 100% { left: 130%; }
 }
 .subtitle { color: var(--pink); font-size: 13px; letter-spacing: 1px; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.7; }
@@ -214,14 +250,26 @@ body {
 }
 .goalbar-txt b { font-size: 12.5px; color: var(--text); }
 
-/* タイマーは客カードの右上に重ねて縦スペースを節約 */
+/* タイマーは客カードの右上に重ねて縦スペースを節約。円環(SVG)で残り時間を視覚化＋中央に数字を重ねる */
 .timer {
   position: absolute; top: 10px; right: 10px; z-index: 2;
-  width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid var(--gold);
+  width: 40px; height: 40px; border-radius: 50%;
   background: rgba(13,13,18,.55); backdrop-filter: blur(2px);
-  display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 900; color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
 }
-.timer.urgent { border-color: var(--bad); color: var(--bad); animation: pulse .5s infinite; }
+.timer-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.timer-ring-bg, .timer-ring-fg {
+  fill: none; stroke-width: 3.5;
+}
+.timer-ring-bg { stroke: rgba(255,255,255,.15); }
+.timer-ring-fg {
+  stroke: var(--gold); stroke-linecap: round;
+  stroke-dasharray: 119.4; stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke .2s;
+}
+.timer-num { position: relative; font-size: 19px; font-weight: 900; color: var(--gold); }
+.timer.urgent .timer-num { color: var(--bad); animation: pulse .5s infinite; }
+.timer.urgent .timer-ring-fg { stroke: var(--bad); }
 @keyframes pulse { 50% { transform: scale(1.12); } }
 
 .customer {
@@ -308,6 +356,7 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 }
 @keyframes fade { from { opacity: 0; } }
 .result-card {
+  position: relative; overflow: hidden;
   background: var(--panel); border: 2px solid var(--line); border-radius: 20px;
   padding: 24px; text-align: center; width: 100%; max-width: 320px;
   display: flex; flex-direction: column; gap: 12px;
@@ -323,6 +372,48 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .res-comment { font-size: 14px; color: var(--muted); line-height: 1.5; }
 .res-sales { font-size: 22px; font-weight: 900; color: var(--gold); }
 .res-repeat { font-size: 14px; color: var(--pink); font-weight: 700; }
+
+/* ---------- 結果カード：★の数による演出差別化 ---------- */
+/* ★0=時間切れ・★1: 地味・沈んだ印象。光る演出やアニメなし */
+.result-card.star-0, .result-card.star-1 {
+  border-color: #4a4642; box-shadow: none;
+  filter: saturate(.55) brightness(.82);
+  animation: pop .25s cubic-bezier(.2,1.4,.5,1);
+}
+.result-card.star-0 .res-stars, .result-card.star-1 .res-stars { animation: none; }
+.result-card.star-1 .res-stars { color: #a49a86; text-shadow: none; }
+/* ★2〜3: 標準的な見た目（色味だけ軽く整理） */
+.result-card.star-2, .result-card.star-3 { border-color: var(--line); }
+/* ★4: 現行のgood相当を維持しつつやや強化 */
+.result-card.star-4 { border-color: var(--gold); box-shadow: 0 0 30px rgba(230,193,75,.35); }
+.result-card.star-4 .res-stars { text-shadow: 0 0 10px rgba(230,193,75,.6); }
+/* ★5: 最大級の派手さ。強いグロー＋脈動＋入場の弾み＋星の輝き */
+.result-card.star-5 {
+  border-color: var(--gold);
+  box-shadow: 0 0 46px rgba(230,193,75,.6), 0 0 90px rgba(230,193,75,.25);
+  animation: pop .25s cubic-bezier(.2,1.4,.5,1), resGlowPulse 1.4s ease-in-out .25s infinite, resShake .5s ease .25s;
+}
+.result-card.star-5 .res-stars {
+  color: #ffe184; text-shadow: 0 0 14px rgba(255,225,130,.95), 0 0 28px rgba(230,193,75,.7);
+  animation: starPop .4s cubic-bezier(.2,1.7,.5,1), starShine 1.1s ease-in-out .4s infinite;
+}
+@keyframes resGlowPulse {
+  0%, 100% { box-shadow: 0 0 46px rgba(230,193,75,.6), 0 0 90px rgba(230,193,75,.25); }
+  50%      { box-shadow: 0 0 66px rgba(230,193,75,.85), 0 0 120px rgba(230,193,75,.4); }
+}
+@keyframes resShake {
+  0%, 100% { transform: translateX(0) scale(1); }
+  20%  { transform: translateX(-4px) scale(1.02); }
+  40%  { transform: translateX(4px) scale(1.02); }
+  60%  { transform: translateX(-2px) scale(1.01); }
+  80%  { transform: translateX(2px) scale(1.01); }
+}
+@keyframes starShine {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.5); }
+}
+/* ★5専用のキラキラ（.nc-sparkを流用、カードにabsolute配置） */
+.result-card .res-spark { z-index: 1; }
 
 /* ---------- 日次リザルト ---------- */
 .result-screen { align-items: center; justify-content: flex-start; text-align: center; gap: 12px; padding-top: 8px; }

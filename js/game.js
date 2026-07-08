@@ -341,7 +341,12 @@ function renderTitle() {
   app.innerHTML = `
     <div class="screen title-screen">
       <button class="mute-btn title-mute" id="muteBtn" title="効果音">${SFX.muted ? '🔇' : '🔊'}</button>
-      <div class="logo">付け回し<br><span class="logo-big">マスター</span></div>
+      <div class="logo-wrap">
+        ${HAS_LOGO ? `<img class="logo-img" src="assets/images/logo.png?v=${ASSET_V}" alt="付け回しマスター">` : `
+        <div class="logo-deco">◆ ✦ ◆</div>
+        <div class="logo">付け回し<br><span class="logo-big">マスター</span></div>
+        <div class="logo-deco">◆ ✦ ◆</div>`}
+      </div>
       <p class="subtitle">〜キャバクラ黒服 育成シミュレーション〜</p>
       ${bestBadge}
       <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
@@ -529,7 +534,13 @@ function renderPlay() {
       ${comboBadge}
 
       <div class="customer ${custClass}">
-        <div class="timer" id="timer">${State.timeLeft}</div>
+        <div class="timer" id="timer">
+          <svg class="timer-ring" viewBox="0 0 44 44">
+            <circle class="timer-ring-bg" cx="22" cy="22" r="19"></circle>
+            <circle class="timer-ring-fg" id="timerRing" cx="22" cy="22" r="19"></circle>
+          </svg>
+          <span class="timer-num" id="timerNum">${State.timeLeft}</span>
+        </div>
         <div class="cust-emoji">${customerFace(c, 100)}</div>
         ${c.name ? `<div class="cust-name">${c.name}</div>` : ''}
         <div class="cust-title">${custTitle}${c.profile ? `<span class="cust-sep"> ・ </span>${c.profile}` : ''}</div>
@@ -555,18 +566,24 @@ function renderPlay() {
 }
 
 // ---------- 制限時間 ----------
+const TIMER_CIRC = 2 * Math.PI * 19; // .timer-ring-fg の円周（r=19）
+function updateTimerRing() {
+  const ring = document.getElementById('timerRing');
+  if (ring) ring.style.strokeDashoffset = TIMER_CIRC * (1 - State.timeLeft / State.today.timeLimit);
+}
 function startTimer() {
   clearInterval(State.timer);
   State.timeLeft = State.today.timeLimit;
-  const tEl = document.getElementById('timer');
-  if (tEl) tEl.textContent = State.timeLeft;
+  const numEl = document.getElementById('timerNum');
+  if (numEl) numEl.textContent = State.timeLeft;
+  updateTimerRing();
   State.timer = setInterval(() => {
     State.timeLeft--;
     const el = document.getElementById('timer');
-    if (el) {
-      el.textContent = State.timeLeft;
-      el.classList.toggle('urgent', State.timeLeft <= 3);
-    }
+    const numEl = document.getElementById('timerNum');
+    if (numEl) numEl.textContent = State.timeLeft;
+    if (el) el.classList.toggle('urgent', State.timeLeft <= 3);
+    updateTimerRing();
     if (State.timeLeft > 0 && State.timeLeft <= 3) SFX.tick();
     if (State.timeLeft <= 0) {
       clearInterval(State.timer);
@@ -727,10 +744,18 @@ function showResult(cast, result) {
   const sayKind = result.nominateHit === true ? 'nominate'
     : result.star >= 4 ? 'great' : result.star === 3 ? 'ok' : 'bad';
   const sayLine = cast ? `<div class="res-say">「${castLine(cast, sayKind)}」</div>` : '';
+  // ★5だけ舞い上がるキラキラ演出（新人加入演出の.nc-sparkを流用）
+  const sparkLine = result.star >= 5 ? `<div class="nc-sparks">${Array.from({ length: 10 }, () => {
+    const left = 5 + Math.random() * 90;
+    const delay = Math.random() * 1.4;
+    const size = 10 + Math.random() * 12;
+    return `<span class="nc-spark res-spark" style="left:${left}%;animation-delay:${delay}s;font-size:${size}px">✦</span>`;
+  }).join('')}</div>` : '';
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.innerHTML = `
-    <div class="result-card ${result.star >= 4 ? 'good' : result.star <= 1 ? 'bad' : ''}">
+    <div class="result-card star-${result.star}">
+      ${sparkLine}
       ${cast ? `<div class="res-cast"><span class="res-face">${avatarSVG(cast.id, 56)}</span>${cast.name}</div>` : ''}
       ${starLine}
       ${revealLine}
