@@ -293,8 +293,9 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
   padding: 3px 12px; margin-top: 2px;
 }
 /* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう）。
-   ラベルは出さず、文中の決め手の語句だけを色・サイズで強調して本音を匂わせる。 */
-.cust-need.vague { font-size: 13.5px; color: var(--text); font-style: italic; margin: 8px auto 4px; max-width: 92%; line-height: 1.6; }
+   ラベルは出さず、文中の決め手の語句だけを色・サイズで強調して本音を匂わせる。
+   v47〜: ヒント文は会話文ではなく見た目の観察描写（地の文）のため非イタリックに。 */
+.cust-need.vague { font-size: 13.5px; color: var(--text); margin: 8px auto 4px; max-width: 92%; line-height: 1.6; }
 /* 決め手の語句（.hint-key）：本文よりひとまわり大きく・太字・非イタリックで浮かせる。ニーズごとに色分け */
 .cust-need.vague .hint-key { font-size: 15px; font-weight: 800; font-style: normal; }
 .hint-heal  { color: #8fd8c6; }
