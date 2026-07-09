@@ -93,7 +93,7 @@ body {
 
 /* ---------- タイトル ---------- */
 .title-screen { align-items: center; justify-content: center; text-align: center; gap: 20px; }
-.logo-wrap { position: relative; overflow: hidden; padding: 6px 4px; }
+.logo-wrap { position: relative; overflow: visible; padding: 6px 4px; }
 .logo-img { display: block; width: min(320px, 88%); height: auto; margin: 0 auto; filter: drop-shadow(0 3px 10px rgba(0, 0, 0, .45)); }
 .logo-deco {
   display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -123,17 +123,15 @@ body {
     0 2px 4px rgba(0, 0, 0, .5),
     0 0 28px rgba(230, 193, 75, .65);
 }
-.logo-wrap::after {
-  content: '';
-  position: absolute; top: 0; left: -60%; width: 35%; height: 100%;
-  background: linear-gradient(75deg, transparent, rgba(255, 255, 255, .5), transparent);
-  transform: skewX(-20deg);
-  animation: logoShine 3.2s ease-in-out .5s 2;
-  pointer-events: none;
+.logo-sparks { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.logo-spark {
+  position: absolute; color: var(--gold); opacity: 0;
+  text-shadow: 0 0 8px rgba(230, 193, 75, .85);
+  animation: logoTwinkle 2.6s ease-in-out infinite;
 }
-@keyframes logoShine {
-  0%, 5% { left: -60%; }
-  45%, 100% { left: 130%; }
+@keyframes logoTwinkle {
+  0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1.15) rotate(90deg); }
 }
 .subtitle { color: var(--pink); font-size: 13px; letter-spacing: 1px; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.7; }

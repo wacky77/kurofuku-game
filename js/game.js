@@ -338,10 +338,19 @@ function renderTitle() {
     ? `<div class="best-rank">最高役職 <span class="best-rank-title">${best.emoji} ${best.title}</span></div>`
     : '';
 
+  const logoSparks = Array.from({ length: 7 }, () => {
+    const left = -4 + Math.random() * 108;
+    const top = -6 + Math.random() * 112;
+    const delay = Math.random() * 2.6;
+    const size = 10 + Math.random() * 12;
+    return `<span class="logo-spark" style="left:${left}%;top:${top}%;animation-delay:${delay}s;font-size:${size}px">✦</span>`;
+  }).join('');
+
   app.innerHTML = `
     <div class="screen title-screen">
       <button class="mute-btn title-mute" id="muteBtn" title="効果音">${SFX.muted ? '🔇' : '🔊'}</button>
       <div class="logo-wrap">
+        <div class="logo-sparks">${logoSparks}</div>
         ${HAS_LOGO ? `<img class="logo-img" src="assets/images/logo.png?v=${ASSET_V}" alt="付け回しマスター">` : `
         <div class="logo-deco">◆ ✦ ◆</div>
         <div class="logo">付け回し<br><span class="logo-big">マスター</span></div>
