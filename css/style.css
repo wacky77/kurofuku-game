@@ -292,9 +292,15 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
   background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px;
   padding: 3px 12px; margin-top: 2px;
 }
-/* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう） */
-.cust-need.vague { font-size: 13.5px; color: var(--text); font-style: italic; margin: 8px auto 4px; max-width: 92%; line-height: 1.5; }
-.cust-need.vague b { display: block; font-style: normal; font-size: 11px; color: var(--pink); letter-spacing: .06em; margin-bottom: 1px; }
+/* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう）。
+   ラベルは出さず、文中の決め手の語句だけを色・サイズで強調して本音を匂わせる。 */
+.cust-need.vague { font-size: 13.5px; color: var(--text); font-style: italic; margin: 8px auto 4px; max-width: 92%; line-height: 1.6; }
+/* 決め手の語句（.hint-key）：本文よりひとまわり大きく・太字・非イタリックで浮かせる。ニーズごとに色分け */
+.cust-need.vague .hint-key { font-size: 15px; font-weight: 800; font-style: normal; }
+.hint-heal  { color: #8fd8c6; }
+.hint-talk  { color: #ff9d78; }
+.hint-price { color: #ffd873; }
+.hint-smile { color: #c8a6ff; }
 /* 結果ポップでの本音の答え合わせ */
 .res-reveal { font-size: 12.5px; color: var(--muted); margin: 2px 0 4px; }
 

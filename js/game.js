@@ -102,6 +102,11 @@ function statRows(s) {
 function escapeHTML(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// 本音を隠す客のヒント文中の **語句** を、ニーズ別の色付き強調表示に変換
+// （メタ的なラベル文言は出さず、文中の決め手の語感だけで本音を匂わせる）
+function formatHint(text, needKey) {
+  return String(text).replace(/\*\*(.+?)\*\*/g, (_, word) => `<b class="hint-key hint-${needKey}">${word}</b>`);
+}
 
 // ---------- ハイスコア（localStorage・通算売上のTop5ランキング） ----------
 const HS_KEY = 'kurofuku_scores';
@@ -187,7 +192,8 @@ function makeCustomer() {
     line: rand(type.lines),
     desc: NEEDS[needKey].label,
     vague: vague,
-    hint: vague ? rand(NEEDS[needKey].hints) : '',
+    // ペルソナ別ヒントがあれば優先、無ければ NEEDS の汎用ヒントにフォールバック
+    hint: vague ? ((type.hints && type.hints[needKey]) ? type.hints[needKey] : rand(NEEDS[needKey].hints)) : '',
     need: NEEDS[needKey].need,
     budget: scaleBudget(rand(type.budgets)),
     bonusMult: 1.0,
@@ -555,7 +561,7 @@ function renderPlay() {
         <div class="cust-title">${custTitle}${c.profile ? `<span class="cust-sep"> ・ </span>${c.profile}` : ''}</div>
         ${c.line ? `<div class="cust-line">“${c.line}”</div>` : ''}
         ${c.vague
-          ? `<div class="cust-need vague"><b>🤔 本音を察して…</b>${c.hint}</div>`
+          ? `<div class="cust-need vague">🤔 ${formatHint(c.hint, c.need)}</div>`
           : `<div class="cust-need">「${c.desc}」</div>`}
         <div class="cust-budget">💰 ${yen(c.budget)}</div>
       </div>
