@@ -474,9 +474,9 @@ const DAY_CONFIG = {
   eventChancePerDay: 0.03,// 1日ごとに上がるイベント発生率
   eventChanceMax: 0.5,    // イベント発生率の上限
   // --- 本音を隠す客（ニーズを言わず、様子ヒントから察してもらう）---
-  vagueChance: 0.25,      // 通常客が「本音を隠す客」になる確率（基準＝DAY1）
+  vagueChance: 0.40,      // 通常客が「本音を隠す客」になる確率（基準＝DAY1）
   vagueChancePerDay: 0.04,// 1日ごとに上がる割合（後半ほど見極めが問われる）
-  vagueChanceMax: 0.6,    // 上限
+  vagueChanceMax: 0.75,   // 上限
   // --- 翌日への繰越（連投で疲弊させる）---
   // 繰越メンバーは一晩でこの量だけ体力回復（100上限）。全開はしない。
   overnightRecoverBase: 40, // 繰越1回目の夜の回復量
