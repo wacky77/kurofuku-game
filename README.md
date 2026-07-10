@@ -57,7 +57,7 @@ kurofuku-game/
 └── assets/               # 配信用の画像・音声・アイコン
 ```
 
-> 更新時は `index.html` の `?v=N`、`js/assets.js` の `ASSET_V`、`sw.js` の `CACHE` / `MEDIA_CACHE` / `MEDIA_V` / `ASSETS` の版数を揃えて上げること。Service Workerは配信用画像・音声も事前保存し、旧世代のキャッシュを自動削除する。
+> アセット更新時は **`index.html` の `?v=N` と `js/assets.js` の `ASSET_V` の2箇所だけ**を揃えて上げればよい。`sw.js` のキャッシュ名・事前キャッシュ対象は `ASSET_V`/`ASSET_IMG`/`ASSET_AUDIO` から `importScripts` で自動導出される。画像・音声を追加したら `js/assets.js` のマニフェスト（`ASSET_IMG` / `ASSET_AUDIO`）に足すだけで事前キャッシュに含まれる。背景画像の版数は `js/assets.js` の `BG_V`（背景ファイルを差し替えた時だけ上げる）。Service Workerは配信用画像・音声も事前保存し、旧世代のキャッシュを自動削除する。
 
 ## 実装済み
 - ハイスコア保存（localStorage・通算売上 Top5）

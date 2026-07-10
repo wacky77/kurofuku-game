@@ -28,7 +28,9 @@
     // Service Worker 登録（オフライン対応。file:// 直開き時はスキップ）
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* 非対応環境は無視 */ });
+        // updateViaCache: 'none' … sw.js が importScripts する js/assets.js の更新を
+        // HTTP キャッシュ（GitHub Pages max-age=600）に阻まれず検知できるようにする。
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => { /* 非対応環境は無視 */ });
       });
     }
   </script>

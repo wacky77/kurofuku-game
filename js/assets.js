@@ -1,13 +1,20 @@
 // ===============================================
-// 付け回しマスター - 外部AI生成画像のマニフェスト
-// 「存在する画像だけ」を列挙する。ここに載っている id は画像(<img>)を、
-// 載っていない id は従来の SVG 似顔絵を表示する（フォールバック）。
+// 付け回しマスター - 外部AI生成アセットのマニフェスト
+// 「存在する画像・音声だけ」を列挙する。画像は、ここに載っている id は
+// <img>を、載っていない id は従来の SVG 似顔絵を表示する（フォールバック）。
+// このマニフェスト（ASSET_IMG / ASSET_AUDIO / ASSET_V / BG_V）は sw.js から
+// importScripts で読み込まれ、事前キャッシュ対象を自動生成する単一情報源。
 //
-// 画像を追加したら:
-//   1) 該当セット(cast / customer / bg / rank)に id を足す
-//   2) ASSET_V を +1（下の index.html / sw.js のキャッシュ版数も揃える）
+// 画像・音声を追加したら:
+//   1) 該当セット(ASSET_IMG.cast/customer/bg/rank、ASSET_AUDIO.bgm/sfx)に id を足す
+//   2) ASSET_V を +1（index.html の `?v=N` も同じ値に揃える。sw.js は自動追従）
+//   3) 背景画像だけを差し替えた時は BG_V も +1（据え置きなら変更不要）
 // ===============================================
 const ASSET_V = 56;
+
+// 背景画像の据え置き版数。背景ファイルを差し替えた時だけ上げる（他のアセットは
+// ASSET_V の更新頻度が高く、背景の再取得コスト（約1MB）を毎回払わせないため分離）。
+const BG_V = 23;
 
 // assets/images/logo.png（透過金色ロゴ画像）。true なら画像、false なら logo-wrap 内の
 // CSSテキストロゴ（.logo/.logo-big、v42実装）にフォールバック。
@@ -33,6 +40,14 @@ const ASSET_IMG = {
   bg: new Set(['title', 'floor', 'result', 'gameover']),
   // assets/images/rank/<RANKS の index + 1>.png（黒服ランク7段階の紋章。透過PNG・256px・パレット256色）
   rank: new Set([0, 1, 2, 3, 4, 5, 6]),
+};
+
+// assets/audio/ 以下の音声マニフェスト（sw.js の事前キャッシュ生成元）
+const ASSET_AUDIO = {
+  // assets/audio/<id>.mp3（画面BGM。id は ASSET_IMG.bg と同じ画面名）
+  bgm: new Set(['title', 'floor', 'result', 'gameover']),
+  // assets/audio/sfx/<id>.mp3
+  sfx: new Set(['button-tap', 'cash-register', 'champagne-pop', 'coin-get', 'fail-buzzer', 'level-up']),
 };
 
 // キャスト画像タグ（従来SVGと同じ .avatar クラスで角丸などを継承）
