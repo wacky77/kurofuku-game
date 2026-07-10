@@ -751,8 +751,14 @@ function recordLog(chosenCast, result, timeout) {
   const cust = State.currentCustomer;
   const need = cust.need;
   const maxStat = Math.max.apply(null, State.roster.map(c => c.stats[need]));
-  const optimal = State.roster.find(c => c.stats[need] === maxStat);
+  // 指名客の正解は能力値ではなく「指名された本人」。通常客だけ最高statを正解にする。
+  const optimal = cust.isNomination
+    ? State.roster.find(c => c.id === cust.nominateId)
+    : State.roster.find(c => c.stats[need] === maxStat);
   const chosenStat = chosenCast ? chosenCast.stats[need] : -1;
+  const hit = !timeout && (cust.isNomination
+    ? result.nominateHit === true
+    : chosenStat === maxStat);
   State.log.push({
     custEmoji: cust.emoji,
     custName: cust.name || '',
@@ -762,7 +768,7 @@ function recordLog(chosenCast, result, timeout) {
     star: result.star,
     sales: result.sales,
     optimalId: optimal.id,
-    hit: !timeout && chosenStat === maxStat, // 最高stat帯を選べていれば正解
+    hit: hit,
     timeout: !!timeout,
     nomination: !!cust.isNomination,        // 本指名（この子目当てで来店した常連）
     gotRepeater: !!result.gotRepeater,      // 場内指名（★4以上でその場で指名をもらった）
