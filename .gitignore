@@ -1,3 +1,6 @@
 .DS_Store
 # BGMのボツ候補・元素材（36MB超・非配信）。採用曲は assets/audio/*.mp3 として直下に置く
 assets/audio/_src/
+
+# Claude Code のローカル権限設定（個人環境依存・非共有）
+.claude/settings.local.json
