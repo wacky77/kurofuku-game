@@ -94,9 +94,10 @@ function stars(n) {
   return `<span class="s-on">${'★'.repeat(n)}</span><span class="s-off">${'☆'.repeat(5 - n)}</span>`;
 }
 // キャストの4能力を行表示（ラベル固定幅で星の開始位置を揃える）
+// ラベル先頭のニーズ色ドット（.ndot）で「客のニーズ色＝得意な子の色」を覚えられる
 function statRows(s) {
   return [['癒し', 'heal'], ['トーク', 'talk'], ['単価', 'price'], ['笑顔', 'smile']]
-    .map(([label, key]) => `<div><span class="stat-label">${label}</span>${stars(s[key])}</div>`)
+    .map(([label, key]) => `<div><span class="stat-label"><i class="ndot ndot-${key}"></i>${label}</span>${stars(s[key])}</div>`)
     .join('');
 }
 function escapeHTML(str) {
@@ -478,6 +479,7 @@ function startDay() {
   State.customerIndex = 0;
   State.sales = 0;
   State.combo = 0;
+  State.goalCelebrated = false; // 目標100%到達演出はその日一度きり
   State.log = [];
   State.dayEarnings = {};   // その日のキャスト別売上をリセット
   State.customers = buildDayCustomers(State.today.customers);
@@ -512,9 +514,15 @@ function renderPlay() {
     const stamClass = cast.stamina < 25 ? 'low' : cast.stamina < 50 ? 'mid' : '';
     const lv = levelFromExp(cast.exp);
     const lvBadge = lv > 1 ? `<span class="cc-lv">Lv${lv}</span>` : '';
+    // 今夜このキャストに付けた直近の★（記憶ゲーの補助。State.log は日ごとにリセット）
+    const lastServe = State.log.slice().reverse().find(l => l.chosenId === cast.id);
+    const lastBadge = lastServe
+      ? `<span class="cc-last ${lastServe.star >= 4 ? 'hi' : ''}">★${lastServe.star}</span>`
+      : '';
     return `
       <button class="cast-choice ${low ? 'tired' : ''}" data-id="${cast.id}">
         ${lvBadge}
+        ${lastBadge}
         <span class="cc-face">${avatarSVG(cast.id, compact ? 52 : 68)}</span>
         <span class="cc-name">${cast.name}${low ? ' 😪' : ''}</span>
         <span class="cc-stambar ${stamClass}"><i style="width:${cast.stamina}%"></i></span>
@@ -522,9 +530,17 @@ function renderPlay() {
   }).join('');
 
   const goalPct = Math.min(100, Math.round(State.sales / State.today.goal * 100));
+  // 進捗の段階で目標バーの色味が増す（50/80/100%）
+  const goalTier = goalPct >= 100 ? 'done' : goalPct >= 80 ? 't80' : goalPct >= 50 ? 't50' : '';
+  // コンボの段階演出（3連続〜=脈動、5連続〜=強グロー＋画面縁ヴィネット）
+  const comboTier = State.combo >= 5 ? ' c5' : State.combo >= 3 ? ' c3' : '';
   const comboBadge = State.combo >= 2
-    ? `<span class="combo-badge">🔥${State.combo}連続的中 <b>+${Math.round(comboMult(State.combo) * 100 - 100)}%</b></span>`
+    ? `<span class="combo-badge${comboTier}">🔥${State.combo}連続的中 <b>+${Math.round(comboMult(State.combo) * 100 - 100)}%</b></span>`
     : '';
+  const vignette = State.combo >= 5 ? '<div class="combo-vignette"></div>' : '';
+  // 組数の進捗ピップ（イベント位置は事前に見せない＝埋まり/現在/未のみ）
+  const pips = State.customers.map((_, i) =>
+    `<i class="pip${i < State.customerIndex ? ' done' : i === State.customerIndex ? ' cur' : ''}"></i>`).join('');
   const custClass = c.isNomination ? 'nomination' : c.isEvent ? 'event' : '';
   const custTitle = c.isNomination ? '💐' + c.title : c.isEvent ? '⚡' + c.title : c.title;
 
@@ -541,12 +557,14 @@ function renderPlay() {
     <div class="screen play-screen">
       <div class="hud">
         <span class="hud-day">DAY ${State.day}</span>
-        <span class="hud-count">${State.customerIndex + 1}<small> / ${State.customers.length}組</small></span>
+        <span class="hud-pips">${pips}</span>
+        <span class="hud-count">${State.customerIndex + 1}<small>/${State.customers.length}</small></span>
         <button class="mute-btn" id="muteBtn" title="効果音">${SFX.muted ? '🔇' : '🔊'}</button>
       </div>
-      <div class="goalbar"><div class="goalbar-fill" style="width:${goalPct}%"></div><span class="goalbar-txt"><b>${yen(State.sales)}</b> / ${yen(State.today.goal)}</span></div>
+      <div class="goalbar" id="goalbar"><div class="goalbar-fill ${goalTier}" id="goalfill" style="width:${goalPct}%"></div><span class="goalbar-txt" id="goaltxt"><b>${yen(State.sales)}</b> / ${yen(State.today.goal)}</span></div>
 
       ${comboBadge}
+      ${vignette}
 
       <div class="customer ${custClass}">
         <div class="timer" id="timer">
@@ -562,7 +580,7 @@ function renderPlay() {
         ${c.line ? `<div class="cust-line">“${c.line}”</div>` : ''}
         ${c.vague
           ? `<div class="cust-need vague">🤔 ${formatHint(c.hint, c.need)}</div>`
-          : `<div class="cust-need">「${c.desc}」</div>`}
+          : `<div class="cust-need need-${c.need}">「${c.desc}」</div>`}
         <div class="cust-budget">💰 ${yen(c.budget)}</div>
       </div>
 
@@ -598,6 +616,9 @@ function startTimer() {
     const numEl = document.getElementById('timerNum');
     if (numEl) numEl.textContent = State.timeLeft;
     if (el) el.classList.toggle('urgent', State.timeLeft <= 3);
+    // 残り3秒：客カードがそわそわ揺れて「帰っちゃいそう」な焦りを演出
+    const custEl = document.querySelector('.customer');
+    if (custEl) custEl.classList.toggle('sowasowa', State.timeLeft > 0 && State.timeLeft <= 3);
     updateTimerRing();
     if (State.timeLeft > 0 && State.timeLeft <= 3) SFX.tick();
     if (State.timeLeft <= 0) {
@@ -607,11 +628,20 @@ function startTimer() {
   }, 1000);
 }
 
+// コンボが2以上から途切れた瞬間、表示中のバッジを砕いて消す（次の再描画で自然に消える前の見せ場）
+function breakComboBadge() {
+  const el = document.querySelector('.combo-badge');
+  if (el) el.classList.add('break');
+  const v = document.querySelector('.combo-vignette');
+  if (v) v.remove();
+}
+
 function timeUp() {
   // 時間切れ：判断できず機会損失（最低売上）
   const c = State.currentCustomer;
   const lostSales = Math.round(c.budget * 0.1 / 1000) * 1000;
   State.sales += lostSales;
+  if (State.combo >= 2) breakComboBadge();
   State.combo = 0; // 迷っている間にコンボが途切れる
   const result = { star: 0, sales: lostSales, gotRepeater: false, comment: '迷っているうちにお客様は帰ってしまった…' };
   SFX.star(1);
@@ -631,7 +661,8 @@ function chooseCast(id) {
   const maxStat = Math.max.apply(null, State.roster.map(c => c.stats[need]));
   const hit = cust.isNomination ? result.nominateHit === true : cast.stats[need] === maxStat;
 
-  // 連続的中コンボ（外すとリセット）
+  // 連続的中コンボ（外すとリセット。2以上から途切れたらバッジを砕く）
+  if (!hit && State.combo >= 2) breakComboBadge();
   State.combo = hit ? State.combo + 1 : 0;
   if (State.combo > State.maxCombo) State.maxCombo = State.combo;
   const cMult = comboMult(State.combo);
@@ -722,6 +753,7 @@ function recordLog(chosenCast, result, timeout) {
     custEmoji: cust.emoji,
     custName: cust.name || '',
     custLabel: cust.isEvent ? cust.title : NEEDS[need].label,
+    need: need,                             // ニーズ4色表示用（振り返り）
     chosenId: chosenCast ? chosenCast.id : null,
     star: result.star,
     sales: result.sales,
@@ -743,7 +775,7 @@ function showResult(cast, result) {
   const cust = State.currentCustomer;
   // 本音を隠していた客は、ここで答え合わせ（見極めの学習ループ）
   const revealLine = cust && cust.vague
-    ? `<div class="res-reveal">🤔 本音は「${NEEDS[cust.need].label}」だった</div>`
+    ? `<div class="res-reveal">🤔 本音は「<b class="need-${cust.need}">${NEEDS[cust.need].label}</b>」だった</div>`
     : '';
   const starLine = result.star > 0 ? `<div class="res-stars">${stars(result.star)}</div>` : '<div class="res-stars fail">時間切れ</div>';
   const comboLine = result.comboBonus > 0
@@ -787,8 +819,50 @@ function showResult(cast, result) {
   document.getElementById('nextBtn').onclick = () => {
     SFX.tap();
     overlay.remove();
-    State.customerIndex++;
-    nextCustomer();
+    const go = () => { State.customerIndex++; nextCustomer(); };
+    // 売上のジュース演出: 金色の数字が目標バーへ吸い込まれ、バーが伸びて光る。
+    // 時間切れ（★0）や極小売上は控えめに（演出なしで即進行）。
+    if (result.star >= 1 && result.sales >= 1000) flySalesToGoal(result.sales, go);
+    else go();
+  };
+}
+
+// 「+¥N」の金色フロートを目標バーへ吸い込ませ、バーの伸長＋キラッ＋達成演出を再生してから done()。
+// renderPlay は接客前の売上でバーを描いているため、ここで新しい値まで動かしてから次の客を描画する
+// （再描画は同じ幅で上書きされるので二重に動かない）。
+function flySalesToGoal(amount, done) {
+  const bar = document.getElementById('goalbar');
+  const fill = document.getElementById('goalfill');
+  if (!bar || !fill || !bar.animate) { done(); return; }
+  const el = document.createElement('div');
+  el.className = 'sales-fly';
+  el.textContent = '+' + yen(amount);
+  document.body.appendChild(el);
+  const barRect = bar.getBoundingClientRect();
+  const dx = barRect.left + barRect.width / 2 - window.innerWidth / 2;
+  const dy = barRect.top + barRect.height / 2 - window.innerHeight * 0.42;
+  el.animate([
+    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+    { transform: 'translate(-50%, -50%) scale(1.08)', opacity: 1, offset: 0.25 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.35)`, opacity: 0 },
+  ], { duration: 620, easing: 'cubic-bezier(.5, -0.1, .75, 1)' }).onfinish = () => {
+    el.remove();
+    // バーを新しい売上まで伸ばして（transition .4s）キラッと光らせる
+    const pct = Math.min(100, Math.round(State.sales / State.today.goal * 100));
+    fill.style.width = pct + '%';
+    fill.className = 'goalbar-fill ' + (pct >= 100 ? 'done' : pct >= 80 ? 't80' : pct >= 50 ? 't50' : '');
+    bar.classList.add('flash');
+    const txt = document.getElementById('goaltxt');
+    if (txt) txt.innerHTML = `<b>${yen(State.sales)}</b> / ${yen(State.today.goal)}`;
+    // 100%到達の瞬間は一度だけ大きく輝く
+    if (State.sales >= State.today.goal && !State.goalCelebrated) {
+      State.goalCelebrated = true;
+      bar.classList.add('celebrate');
+      SFX.vip();
+      setTimeout(done, 900);
+    } else {
+      setTimeout(done, 450);
+    }
   };
 }
 
@@ -891,7 +965,7 @@ function renderDayResult() {
     return `
       <div class="rv-row ${l.hit ? 'ok' : 'ng'}">
         <div class="rv-top">
-          <span class="rv-cust">${l.custEmoji} ${l.custName ? `${l.custName} ` : ''}<small>${l.custLabel}</small>${nomBadge}</span>
+          <span class="rv-cust">${l.custEmoji} ${l.custName ? `${l.custName} ` : ''}<small class="${l.need ? `need-${l.need}` : ''}">${l.custLabel}</small>${nomBadge}</span>
           <span class="rv-right"><span class="rv-mark">${l.hit ? '○ 正解' : '× 惜しい'}</span><span class="rv-sales">+${yen(l.sales)}</span></span>
         </div>
         <div class="rv-bottom">
