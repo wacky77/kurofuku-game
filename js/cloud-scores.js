@@ -83,10 +83,59 @@
     return { ok: true, updated: true };
   }
 
+  // ---------- デイリーチャレンジ（日付別ランキング） ----------
+  // daily/{yyyymmdd}/scores/{uid} に1端末1レコード（自己ベストのみ）。
+  // 通常ランキング（scores/{uid}）とは完全に独立。
+  const DAILY_COLLECTION = 'daily';
+  function validDate(d) { return /^\d{8}$/.test(String(d || '')); }
+  function normalizeDailyScore(raw) {
+    const name = String(raw.name || '名無し').trim().slice(0, MAX_NAME) || '名無し';
+    const sales = Math.max(0, Math.min(MAX_SALES, Math.floor(Number(raw.sales) || 0)));
+    return { name, sales };
+  }
+
+  async function topDailyScores(date, max) {
+    if (!validDate(date)) throw new Error('bad-daily-date');
+    const { db, fs } = await ready();
+    const q = fs.query(
+      fs.collection(db, DAILY_COLLECTION, String(date), 'scores'),
+      fs.orderBy('sales', 'desc'),
+      fs.limit(Math.max(1, Math.min(50, max || 10)))
+    );
+    const snap = await fs.getDocs(q);
+    return snap.docs
+      .map((d) => normalizeDailyScore(d.data()))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, max || 10);
+  }
+
+  async function submitDailyScore(raw) {
+    if (!validDate(raw && raw.date)) throw new Error('bad-daily-date');
+    const date = String(raw.date);
+    const score = normalizeDailyScore(raw);
+    const { auth, db, fs } = await ready();
+    const uid = auth.currentUser && auth.currentUser.uid;
+    if (!uid) throw new Error('anonymous-auth-failed');
+    const ref = fs.doc(db, DAILY_COLLECTION, date, 'scores', uid);
+    const currentSnap = await fs.getDoc(ref);
+    const current = currentSnap.exists() ? normalizeDailyScore(currentSnap.data()) : null;
+    if (current && score.sales <= current.sales) return { ok: true, updated: false };
+    await fs.setDoc(ref, {
+      uid,
+      name: score.name,
+      sales: score.sales,
+      date,
+      createdAt: fs.serverTimestamp(),
+    });
+    return { ok: true, updated: true };
+  }
+
   window.CloudScores = {
     isConfigured: () => !!config(),
     topScores,
     submitScore,
+    topDailyScores,
+    submitDailyScore,
   };
 })();
 

@@ -33,6 +33,36 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // デイリーチャレンジ（日付別ランキング）: daily/{yyyymmdd}/scores/{uid} に
+    // 1端末1レコード。通常の scores とは独立。自己ベスト超過時のみ更新可。
+    match /daily/{date}/scores/{userId} {
+      function validDailyScore() {
+        return date.matches('^[0-9]{8}$')
+          && request.resource.data.keys().hasOnly([
+              'uid', 'name', 'sales', 'date', 'createdAt'
+            ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.date == date
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 8
+          && request.resource.data.sales is int
+          && request.resource.data.sales >= 0
+          && request.resource.data.sales <= 999999999
+          && request.resource.data.createdAt == request.time;
+      }
+
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && validDailyScore();
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && validDailyScore()
+        && request.resource.data.sales > resource.data.sales;
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

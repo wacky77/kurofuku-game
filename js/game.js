@@ -32,6 +32,9 @@ const State = {
   castEarnings: {},     // この run のキャスト別・通算売上（castId → 金額）
   dayEarnings: {},      // その日のキャスト別売上（castId → 金額・毎日リセット）
   runTimeouts: 0,       // この run で時間切れした回数（隠し実績「迷いなき采配」用）
+  mode: 'normal',       // 'normal' | 'daily'（📅 本日の営業＝日付シードの同条件1日スコアタ）
+  dailyDate: null,      // デイリーの日付シード（yyyymmdd 文字列）
+  dailyIsBest: false,   // 今回のデイリーが端末内の自己ベスト更新だったか（結果画面表示用）
 };
 
 // ---------- コンボ／育成の調整値 ----------
@@ -72,12 +75,33 @@ function comboMult(combo) {
   return 1 + Math.min(combo - 1, COMBO.maxStep) * COMBO.bonusPerStep;
 }
 
+// ---------- 乱数（v59〜生成系だけ差し替え可能に） ----------
+// 生成系（rand/randWeighted/pickRandom/makeCustomer/buildDayCustomers）は RNG() を参照する。
+// 通常モードは RNG = Math.random のままで従来と完全に同一挙動。
+// デイリーチャレンジ中だけ日付シードの mulberry32 に差し替え、応募者と来店順を全員共通にする。
+// judge() の★判定ブレは常に Math.random ＝「状況は同じ・結果は実力と運」。
+let RNG = Math.random;
+function mulberry32(seed) {
+  let a = seed | 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// シード付きRNGで fn を実行し、終わったら必ず Math.random へ戻す
+function withSeededRNG(seed, fn) {
+  RNG = mulberry32(seed);
+  try { return fn(); } finally { RNG = Math.random; }
+}
+
 // ---------- ユーティリティ ----------
-function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function rand(arr) { return arr[Math.floor(RNG() * arr.length)]; }
 // weight プロパティ付き配列からの重み付き抽選（EVENTS用。weight 省略時は1）
 function randWeighted(arr) {
   const total = arr.reduce((a, e) => a + (e.weight || 1), 0);
-  let r = Math.random() * total;
+  let r = RNG() * total;
   for (const e of arr) { r -= (e.weight || 1); if (r <= 0) return e; }
   return arr[arr.length - 1];
 }
@@ -85,7 +109,7 @@ function randWeighted(arr) {
 function pickRandom(arr, n) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(RNG() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a.slice(0, Math.min(n, a.length));
@@ -176,6 +200,34 @@ function loadCareer() {
 function saveCareer(c) {
   try { localStorage.setItem(CAREER_KEY, JSON.stringify(c)); } catch (e) { /* 無視 */ }
 }
+// ---------- デイリーチャレンジ（📅 本日の営業） ----------
+// 日付シード（yyyymmdd・端末ローカル日付）で応募8人と来店順を全員共通にした、
+// DAY3相当固定難度の1日スコアタ。何度でも挑戦でき、記録は自己ベストのみ。
+const DAILY = { day: 3 };            // 固定難度＝difficulty(3) を使う
+const DAILY_BEST_KEY = 'kurofuku_daily';
+function dailyDateStr(d) {
+  const t = d || new Date();
+  return `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`;
+}
+// 端末内の「本日の自己ベスト」。日付が変わったら自動で無効（nullを返す）。
+function loadDailyBest() {
+  try {
+    const v = JSON.parse(localStorage.getItem(DAILY_BEST_KEY));
+    if (v && v.date === dailyDateStr() && Number.isFinite(Number(v.sales)) && Number(v.sales) >= 0) {
+      return { date: v.date, sales: Number(v.sales) };
+    }
+  } catch (e) { /* 壊れたデータは無視 */ }
+  return null;
+}
+function saveDailyBest(sales) {
+  try { localStorage.setItem(DAILY_BEST_KEY, JSON.stringify({ date: dailyDateStr(), sales })); } catch (e) { /* 無視 */ }
+}
+// 「20260711」→「7/11」（結果画面・シェア用の短い表記）
+function dailyDateLabel(dateStr) {
+  const s = String(dateStr || '');
+  return s.length === 8 ? `${Number(s.slice(4, 6))}/${Number(s.slice(6, 8))}` : s;
+}
+
 // 1日の営業結果を生涯成績へ加算（endDayから）。加算後のキャリアを返す。
 function addCareerDay() {
   const c = loadCareer();
@@ -194,7 +246,7 @@ function cloudRankingRows(list) {
       <span class="rank-pos">${pos[i]}</span>
       <span class="rank-name">${escapeHTML(s.name)}</span>
       <span class="rank-sales">${yen(s.sales)}</span>
-      <span class="rank-day">DAY${s.day}</span>
+      ${s.day ? `<span class="rank-day">DAY${s.day}</span>` : ''}
     </div>`).join('');
 }
 
@@ -222,6 +274,24 @@ function loadCloudRanking(id, max) {
   });
 }
 
+// デイリーチャレンジの日付別ランキング読込。ルール未デプロイ・未設定・通信失敗は
+// 「準備中」表示に落とすだけ（デイリー自体は端末内の自己ベストで遊べる）。
+function loadDailyCloudRanking(id, date, max) {
+  const host = document.getElementById(id);
+  if (!host) return;
+  if (typeof CloudScores === 'undefined' || !CloudScores.isConfigured() || !CloudScores.topDailyScores) {
+    host.innerHTML = '<div class="rank-empty">全国ランキングは準備中です</div>';
+    return;
+  }
+  CloudScores.topDailyScores(date, max || 10).then((scores) => {
+    const current = document.getElementById(id);
+    if (current) current.innerHTML = cloudRankingRows(scores);
+  }).catch(() => {
+    const current = document.getElementById(id);
+    if (current) current.innerHTML = '<div class="rank-empty">全国ランキングは準備中です（端末内ベストは保存されます）</div>';
+  });
+}
+
 // 予算に客単価補正をかけ、1000円単位に丸める
 function scaleBudget(n) {
   return Math.round(n * DAY_CONFIG.budgetScale / 1000) * 1000;
@@ -229,7 +299,7 @@ function scaleBudget(n) {
 
 // ---------- 来店客の生成 ----------
 function makeCustomer() {
-  if (Math.random() < State.today.eventChance) {
+  if (RNG() < State.today.eventChance) {
     const ev = randWeighted(EVENTS); // 社長来店などジャックポットは weight で絞る
     return {
       isEvent: true,
@@ -249,13 +319,13 @@ function makeCustomer() {
   }
   const type = rand(CUSTOMER_TYPES);
   // ニーズはペルソナの傾向を6割、残り4割はランダム（読みの余地を残す）
-  const needKey = (type.needBias && Math.random() < 0.6)
+  const needKey = (type.needBias && RNG() < 0.6)
     ? type.needBias
     : rand(Object.keys(NEEDS));
   const age = rand(CUSTOMER_AGES_BY_ID[type.id] || CUSTOMER_AGES);
   const ctx = rand(CUSTOMER_CONTEXTS);
   // 本音を隠す客：ニーズを直接言わず、様子ヒント（NEEDS[].hints）から察してもらう
-  const vague = Math.random() < State.today.vagueChance;
+  const vague = RNG() < State.today.vagueChance;
   return {
     isEvent: false,
     name: rand(CUSTOMER_NAMES) + 'さん',
@@ -307,8 +377,8 @@ function buildDayCustomers(count) {
   const validReps = State.repeaterPool.filter(r => rosterIds.includes(r.castId));
   const list = [];
   for (let i = 0; i < count; i++) {
-    if (validReps.length && Math.random() < NOMINATION.chance) {
-      const idx = Math.floor(Math.random() * validReps.length);
+    if (validReps.length && RNG() < NOMINATION.chance) {
+      const idx = Math.floor(RNG() * validReps.length);
       const rep = validReps.splice(idx, 1)[0];
       // 消費したリピーターは本プールからも取り除く
       const pi = State.repeaterPool.indexOf(rep);
@@ -454,6 +524,8 @@ function renderTitle() {
       ${bestBadge}
       ${careerBadge}
       <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
+      <button class="btn btn-daily" id="dailyBtn">📅 本日の営業<span class="btn-sub">日替わり・全国みんな同じお客様</span></button>
+      ${(() => { const db = loadDailyBest(); return db ? `<div class="daily-best">本日の自己ベスト <b>${yen(db.sales)}</b></div>` : ''; })()}
       <p class="hint">来るお客に合わせて最適なキャストを付け回し、<br>1日の売上目標を目指せ！</p>
       <div class="title-ranking">${cloudRankingBlock('titleCloudRanking', 5)}</div>
       <details class="ranking local-ranking">
@@ -463,6 +535,7 @@ function renderTitle() {
       <button class="btn btn-ghost ach-btn" id="achBtn">🏅 実績 <span class="ach-count">${Achieve.count()}/${Achieve.DEFS.length}</span></button>
     </div>`;
   document.getElementById('startBtn').onclick = () => { SFX.tap(); startSelection(); };
+  document.getElementById('dailyBtn').onclick = () => { SFX.tap(); startDailySelection(); };
   document.getElementById('achBtn').onclick = () => { SFX.tap(); showAchievements(); };
   document.getElementById('muteBtn').onclick = (e) => {
     SFX.toggle();
@@ -500,6 +573,8 @@ function showAchievements() {
 
 // ---------- キャスト選抜 ----------
 function startSelection() {
+  State.mode = 'normal';
+  State.dailyDate = null;
   State.selectedIds = [];
   State.scoreSaved = false;   // 新しい run はスコア未登録から
   State.lastScoreTs = null;
@@ -517,6 +592,34 @@ function startSelection() {
   // BGMは enterScreen が画面に応じて切替（スタートボタンのタップが再生許可になる）
   // 全応募プールからランダムで8人を選出（プレイごとに顔ぶれが変わる）
   State.applicants = pickRandom(CAST_POOL, 8);
+  State.screen = 'select';
+  render();
+}
+
+// デイリーチャレンジの開始。dateStr 省略時は今日（端末ローカル）。
+// 応募8人は日付シードで決定＝同じ日は全プレイヤー・何度やっても同じ顔ぶれ。
+function startDailySelection(dateStr) {
+  State.mode = 'daily';
+  State.dailyDate = String(dateStr || dailyDateStr());
+  State.dailyIsBest = false;
+  State.selectedIds = [];
+  State.scoreSaved = false;
+  State.lastScoreTs = null;
+  State.scoreSyncStatus = '';
+  State.repeaterPool = [];
+  State.combo = 0;
+  State.maxCombo = 0;
+  State.castEarnings = {};
+  State.dayEarnings = {};
+  State.runTimeouts = 0;
+  State.day = DAILY.day;                 // 固定難度（DAY3相当）
+  State.totalSales = 0; State.repeaters = 0; State.roster = [];
+  // 生涯キャリア：デイリーも1回の営業として数える
+  const career = loadCareer();
+  career.runs++;
+  saveCareer(career);
+  // 応募者の抽選だけシードRNGで（以降の演出等の乱数は通常どおり）
+  State.applicants = withSeededRNG(Number(State.dailyDate) | 0, () => pickRandom(CAST_POOL, 8));
   State.screen = 'select';
   render();
 }
@@ -540,7 +643,7 @@ function renderSelect() {
   app.innerHTML = `
     <div class="screen">
       <div class="form-head">
-        <span class="day-badge">DAY ${State.day}</span>
+        <span class="day-badge">${State.mode === 'daily' ? '📅 本日の営業' : `DAY ${State.day}`}</span>
         <h2 class="head">キャストを4人選ぶ <span id="cnt">(${State.selectedIds.length}/4)</span></h2>
       </div>
       <p class="head-sub"><span class="warn">⚠️ 本番中は星が見えない！ 顔と得意を覚えよう</span></p>
@@ -581,7 +684,13 @@ function startDay() {
   State.goalCelebrated = false; // 目標100%到達演出はその日一度きり
   State.log = [];
   State.dayEarnings = {};   // その日のキャスト別売上をリセット
-  State.customers = buildDayCustomers(State.today.customers);
+  // 来店リストの生成。デイリーは日付シード+1（応募者抽選とは別ストリーム）で決定化＝
+  // 同じ日は全プレイヤー・何度やっても同じ来店順。通常モードは従来どおり Math.random。
+  if (State.mode === 'daily') {
+    State.customers = withSeededRNG((Number(State.dailyDate) | 0) + 1, () => buildDayCustomers(State.today.customers));
+  } else {
+    State.customers = buildDayCustomers(State.today.customers);
+  }
   State.screen = 'play';
   nextCustomer();
 }
@@ -655,7 +764,7 @@ function renderPlay() {
   app.innerHTML = `
     <div class="screen play-screen">
       <div class="hud">
-        <span class="hud-day">DAY ${State.day}</span>
+        <span class="hud-day">${State.mode === 'daily' ? '📅 本日' : `DAY ${State.day}`}</span>
         <span class="hud-pips">${pips}</span>
         <span class="hud-count">${State.customerIndex + 1}<small>/${State.customers.length}</small></span>
         <button class="mute-btn" id="muteBtn" title="効果音">${SFX.muted ? '🔇' : '🔊'}</button>
@@ -991,6 +1100,7 @@ function animateCount(el, to, dur) {
 
 // ---------- 1日の終了 ----------
 function endDay() {
+  if (State.mode === 'daily') { endDaily(); return; } // デイリーは1日で終了（専用結果画面へ）
   // 役職の昇格判定（今日の売上を加える前後で比較）
   const prevRankIdx = rankFor(State.totalSales).index;
   State.totalSales += State.sales;
@@ -1023,6 +1133,37 @@ function endDay() {
   renderDayResult();
 }
 
+// デイリーチャレンジの1日終了。翌日へは進まず、専用の結果画面へ。
+function endDaily() {
+  State.totalSales += State.sales; // 1日ぶんで確定（実績の rankIndex 等に使用）
+  // 生涯キャリアには通常営業と同じく加算（デイリーも実プレイのため）
+  const career = addCareerDay();
+
+  const achieved = State.sales >= State.today.goal;
+  State.screen = 'dayresult';
+  setTimeout(() => achieved ? SFX.fanfare() : SFX.gameover(), 250);
+
+  const hits = State.log.filter(l => l.hit).length;
+  Achieve.onDayEnd({
+    day: State.day,
+    achieved,
+    perfect: State.log.length > 0 && hits === State.log.length,
+    repeaters: State.repeaters,
+    totalSales: State.totalSales,
+    rankIndex: rankFor(State.totalSales).index,
+    lifeSales: career.lifeSales,
+    runTimeouts: State.runTimeouts,
+    allRookie: State.roster.length > 0 && State.roster.every(c => c.rookie),
+  });
+
+  // 端末内の自己ベスト（日付ごと・日付が変わると自動リセット）
+  const prev = loadDailyBest();
+  State.dailyIsBest = !prev || State.sales > prev.sales;
+  if (State.dailyIsBest) saveDailyBest(State.sales);
+
+  renderDailyResult();
+}
+
 // 稼ぎ頭ランキングのHTML（source: castId→金額。headingで見出しを切替）
 function castEarningsHTML(source, heading, open) {
   const entries = Object.keys(source)
@@ -1050,28 +1191,9 @@ function castEarningsHTML(source, heading, open) {
     </details>`;
 }
 
-function renderDayResult() {
-  enterScreen();
-  const achieved = State.sales >= State.today.goal;
-  const hits = State.log.filter(l => l.hit).length;
-
-  // 黒服ランク（通算売上ベース）と次の役職までの進捗
-  const rk = rankFor(State.totalSales);
-  const rankSection = `
-    ${State.rankUp ? `<div class="rankup-banner">
-      <div class="rankup-medal">${rankIcon(State.rankUp.toIndex, 88, State.rankUp.to.emoji)}</div>
-      <div class="rankup-head">🎉 昇格！</div>
-      <div class="rankup-names">${State.rankUp.from.title} → <b>${State.rankUp.to.title}</b></div>
-    </div>` : ''}
-    <div class="rank-card">
-      <div class="rank-now">${rankIcon(rk.index, 34, rk.emoji)}<span class="rank-title">${rk.title}</span></div>
-      ${rk.next
-        ? `<div class="rank-prog"><i style="width:${rk.progress}%"></i></div>
-           <div class="rank-next">次の役職「${rk.next.title}」まで あと ${yen(rk.next.min - State.totalSales)}</div>`
-        : `<div class="rank-next">最高役職に到達！</div>`}
-    </div>`;
-
-  // 接客ふりかえり：客ごとに「あなたの選択」と「最適だった子」を並べる
+// 接客ふりかえり（details ブロック）。通常のDAY結果とデイリー結果で共用。
+// 客ごとに「あなたの選択」と「最適だった子」を並べる。
+function reviewListHTML() {
   const rows = State.log.map(l => {
     const optName = CAST_POOL.find(c => c.id === l.optimalId).name;
     const yourFace = l.chosenId
@@ -1102,6 +1224,34 @@ function renderDayResult() {
         </div>
       </div>`;
   }).join('');
+  return `
+      <details class="rsec review">
+        <summary>📋 接客ふりかえり<span class="rsec-count">${State.log.length}件</span></summary>
+        <div class="rsec-body review-list">${rows}</div>
+      </details>`;
+}
+
+function renderDayResult() {
+  enterScreen();
+  const achieved = State.sales >= State.today.goal;
+  const hits = State.log.filter(l => l.hit).length;
+
+  // 黒服ランク（通算売上ベース）と次の役職までの進捗
+  const rk = rankFor(State.totalSales);
+  const rankSection = `
+    ${State.rankUp ? `<div class="rankup-banner">
+      <div class="rankup-medal">${rankIcon(State.rankUp.toIndex, 88, State.rankUp.to.emoji)}</div>
+      <div class="rankup-head">🎉 昇格！</div>
+      <div class="rankup-names">${State.rankUp.from.title} → <b>${State.rankUp.to.title}</b></div>
+    </div>` : ''}
+    <div class="rank-card">
+      <div class="rank-now">${rankIcon(rk.index, 34, rk.emoji)}<span class="rank-title">${rk.title}</span></div>
+      ${rk.next
+        ? `<div class="rank-prog"><i style="width:${rk.progress}%"></i></div>
+           <div class="rank-next">次の役職「${rk.next.title}」まで あと ${yen(rk.next.min - State.totalSales)}</div>`
+        : `<div class="rank-next">最高役職に到達！</div>`}
+    </div>`;
+
 
   // 店長以上まで上り詰めてのゲームオーバーは、通算売上No.1のキャストが労ってくれる
   let celebrate = '';
@@ -1174,10 +1324,7 @@ function renderDayResult() {
 
       ${scoreArea}
 
-      <details class="rsec review">
-        <summary>📋 接客ふりかえり<span class="rsec-count">${State.log.length}件</span></summary>
-        <div class="rsec-body review-list">${rows}</div>
-      </details>
+      ${reviewListHTML()}
 
       ${buttons}
     </div>`;
@@ -1229,9 +1376,90 @@ function renderDayResult() {
   }
 }
 
+// ---------- デイリーチャレンジの結果画面 ----------
+// 1日で終了。自己ベスト・日付別の全国ランキング・同一シードでの再挑戦を提示する。
+function renderDailyResult() {
+  enterScreen();
+  const achieved = State.sales >= State.today.goal;
+  const hits = State.log.filter(l => l.hit).length;
+  const best = loadDailyBest();
+  const canRegister = !State.scoreSaved && State.sales > 0;
+
+  const scoreArea = canRegister
+    ? `<div class="score-register">
+         <div class="sr-title">🌐 本日の全国ランキングへ記録</div>
+         <div class="sr-note">記録されるのは自己ベストのみ（何度でも挑戦OK）</div>
+         <div class="sr-form">
+           <input id="nameInput" class="name-input" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="off">
+           <button class="btn btn-primary sr-btn" id="regBtn">登録</button>
+         </div>
+       </div>`
+    : `${State.scoreSyncStatus ? `<div class="score-sync ${State.scoreSyncStatus === 'success' ? 'success' : 'local'}">${State.scoreSyncStatus === 'success' ? '✓ 本日の全国ランキングに登録しました' : '📱 端末に保存しました（全国ランキングは準備中）'}</div>` : ''}`;
+
+  app.innerHTML = `
+    <div class="screen result-screen daily-result ${achieved ? '' : 'gameover'}">
+      <h2 class="day-result-head">📅 本日の営業 終了！</h2>
+      <p class="daily-date-line">${dailyDateLabel(State.dailyDate)} の挑戦 ・ 全国みんな同じお客様</p>
+      <div class="big-sales" id="bigSales">${yen(State.sales)}</div>
+      <p class="day-goal">目標 ${yen(State.today.goal)}${achieved ? ' 達成！🎉' : ' には届かず…'}</p>
+      ${State.dailyIsBest
+        ? '<div class="daily-newbest">🏆 本日の自己ベスト更新！</div>'
+        : (best ? `<p class="daily-best-line">本日の自己ベスト ${yen(best.sales)}</p>` : '')}
+      <div class="result-stats">
+        <div><small>付け回し的中</small><b>${hits}/${State.log.length}</b></div>
+        <div><small>最大コンボ</small><b>${State.maxCombo}連続</b></div>
+        <div><small>リピーター</small><b>${State.repeaters}人</b></div>
+        <div><small>時間切れ</small><b>${State.runTimeouts}回</b></div>
+      </div>
+
+      ${scoreArea}
+      <div class="ranking cloud-ranking">
+        <div class="ranking-head">📅 本日の全国ランキング TOP10</div>
+        <div id="dailyCloudRanking" class="cloud-ranking-body"><div class="rank-empty">読み込み中…</div></div>
+      </div>
+
+      ${castEarningsHTML(State.dayEarnings, '💰 本日の稼ぎ頭', true)}
+      ${reviewListHTML()}
+
+      <button class="btn btn-primary" id="retryDailyBtn">🔁 もう一度挑戦（同じお客様）</button>
+      <button class="btn btn-ghost" id="shareBtn">📣 結果をシェア</button>
+      <button class="btn btn-ghost" id="titleBtn">タイトルへ戻る</button>
+    </div>`;
+
+  animateCount(document.getElementById('bigSales'), State.sales, 800);
+  loadDailyCloudRanking('dailyCloudRanking', State.dailyDate, 10);
+
+  document.getElementById('retryDailyBtn').onclick = () => { SFX.tap(); startDailySelection(State.dailyDate); };
+  document.getElementById('shareBtn').onclick = () => { SFX.tap(); shareResult(); };
+  document.getElementById('titleBtn').onclick = resetToTitle;
+
+  if (canRegister) {
+    const register = async () => {
+      const btn = document.getElementById('regBtn');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = '登録中…';
+      const name = document.getElementById('nameInput').value.trim();
+      State.scoreSyncStatus = 'local';
+      try {
+        if (typeof CloudScores !== 'undefined' && CloudScores.isConfigured() && CloudScores.submitDailyScore) {
+          await CloudScores.submitDailyScore({ name, sales: State.sales, date: State.dailyDate });
+          State.scoreSyncStatus = 'success';
+        }
+      } catch (e) { /* 端末内ベストは保存済み。全国登録だけ失敗として扱う（ルール未デプロイ時など） */ }
+      State.scoreSaved = true;
+      renderDailyResult(); // フォーム→登録結果表示に切り替え
+    };
+    document.getElementById('regBtn').onclick = register;
+    document.getElementById('nameInput').onkeydown = (e) => { if (e.key === 'Enter') register(); };
+  }
+}
+
 // 結果をシェア（Web Share API。非対応ならクリップボードにコピー）
 function shareResult() {
-  const text = `『付け回しマスター』DAY${State.day}まで到達！\n通算売上 ${yen(State.totalSales)} / 最大コンボ ${State.maxCombo}連続 / リピーター ${State.repeaters}人\n#付け回しマスター`;
+  const text = State.mode === 'daily'
+    ? `『付け回しマスター』📅 本日の営業（${dailyDateLabel(State.dailyDate)}）\n売上 ${yen(State.sales)} / 最大コンボ ${State.maxCombo}連続\n同じお客様で勝負しよう！ #付け回しマスター`
+    : `『付け回しマスター』DAY${State.day}まで到達！\n通算売上 ${yen(State.totalSales)} / 最大コンボ ${State.maxCombo}連続 / リピーター ${State.repeaters}人\n#付け回しマスター`;
   const data = { title: '付け回しマスター', text, url: location.href };
   if (navigator.share) {
     navigator.share(data).catch(() => { /* キャンセル等は無視 */ });
@@ -1259,6 +1487,7 @@ function resetToTitle() {
   State.day = 1; State.totalSales = 0; State.repeaters = 0; State.roster = [];
   State.repeaterPool = []; State.combo = 0; State.maxCombo = 0;
   State.swapOutIds = []; State.swapPool = []; State.swapPoolDay = null; State.swapSel = [];
+  State.mode = 'normal'; State.dailyDate = null; State.dailyIsBest = false;
   State.screen = 'title';
   render();
 }

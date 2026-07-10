@@ -703,6 +703,26 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .career-line { font-size: 12px; color: var(--text); margin-top: 2px; }
 .career-next { font-size: 10px; color: var(--muted); margin-top: 2px; }
 
+/* ---------- デイリーチャレンジ（📅 本日の営業） ---------- */
+.btn-daily {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  background: var(--panel2); color: var(--gold);
+  border: 1px solid var(--gold-dim); border-radius: 12px;
+  font-weight: 800; padding: 9px 18px;
+}
+.btn-daily .btn-sub { font-size: 10px; font-weight: 600; color: var(--muted); }
+.daily-best { font-size: 11px; color: var(--muted); margin-top: -6px; }
+.daily-best b { color: var(--gold); }
+.daily-date-line { font-size: 12px; color: var(--muted); margin: -4px 0 2px; }
+.daily-newbest {
+  font-size: 14px; font-weight: 800; color: #1a1400;
+  background: linear-gradient(135deg, #fff2b8, var(--gold));
+  border-radius: 10px; padding: 6px 14px; margin: 2px auto;
+  box-shadow: 0 0 16px rgba(230,193,75,.4);
+  animation: pop .3s cubic-bezier(.2,1.4,.5,1);
+}
+.daily-best-line { font-size: 12px; color: var(--muted); margin: 0; }
+
 .rank-card {
   width: 100%; max-width: 320px; margin: 2px auto; background: var(--panel);
   border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
