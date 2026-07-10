@@ -93,11 +93,14 @@ function yen(n) { return '¥' + n.toLocaleString('ja-JP'); }
 function stars(n) {
   return `<span class="s-on">${'★'.repeat(n)}</span><span class="s-off">${'☆'.repeat(5 - n)}</span>`;
 }
-// キャストの4能力を行表示（ラベル固定幅で星の開始位置を揃える）
-// ラベル先頭のニーズ色ドット（.ndot）で「客のニーズ色＝得意な子の色」を覚えられる
+// キャストの最も得意なニーズ（顔枠の色分け用。同値は heal>talk>price>smile の先頭を採用）
+function bestNeed(stats) {
+  return ['heal', 'talk', 'price', 'smile'].reduce((best, k) => stats[k] > stats[best] ? k : best, 'heal');
+}
+// キャストの4能力を行表示（ラベルをニーズ4色で色分け＝得意が一目で分かる）
 function statRows(s) {
   return [['癒し', 'heal'], ['トーク', 'talk'], ['単価', 'price'], ['笑顔', 'smile']]
-    .map(([label, key]) => `<div><span class="stat-label"><i class="ndot ndot-${key}"></i>${label}</span>${stars(s[key])}</div>`)
+    .map(([label, key]) => `<div><span class="stat-label need-${key}">${label}</span>${stars(s[key])}</div>`)
     .join('');
 }
 function escapeHTML(str) {
@@ -429,10 +432,8 @@ function renderSelect() {
     const picked = State.selectedIds.includes(c.id);
     return `
       <div class="cast-card ${picked ? 'picked' : ''}" data-id="${c.id}">
-        <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
+        <div class="cast-avatar" style="--ring:var(--need-${bestNeed(c.stats)})">${avatarSVG(c.id, 92)}</div>
         <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
-        <div class="cast-tag">${c.tag}</div>
-        <div class="cast-profile">${c.profile || ''}</div>
         ${c.rookie ? '<div class="rookie-trait">🌱 成長2倍・Lvアップで能力+1</div>' : ''}
         <div class="cast-stats">
           ${statRows(c.stats)}
@@ -443,7 +444,10 @@ function renderSelect() {
 
   app.innerHTML = `
     <div class="screen">
-      <h2 class="head">キャストを4人選ぶ <span id="cnt">(${State.selectedIds.length}/4)</span></h2>
+      <div class="form-head">
+        <span class="day-badge">DAY ${State.day}</span>
+        <h2 class="head">キャストを4人選ぶ <span id="cnt">(${State.selectedIds.length}/4)</span></h2>
+      </div>
       <p class="head-sub"><span class="warn">⚠️ 本番中は星が見えない！ 顔と得意を覚えよう</span></p>
       <div class="cast-grid">${cards}</div>
       <button class="btn btn-primary" id="goBtn" ${State.selectedIds.length === 4 ? '' : 'disabled'}>この4人で開店！</button>
@@ -1151,9 +1155,8 @@ function renderRosterEdit() {
     return `
       <div class="cast-card ${out ? 'swap-out' : 'picked'}" data-id="${c.id}">
         <button class="cast-info" data-info="${c.id}" title="詳細">ℹ️</button>
-        <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
+        <div class="cast-avatar" style="--ring:var(--need-${bestNeed(c.stats)})">${avatarSVG(c.id, 92)}</div>
         <div class="cast-name">${c.name} <span class="lv-tag">Lv${lv}</span> ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
-        <div class="cast-tag">${c.tag}</div>
         <div class="cast-stats">
           ${statRows(c.stats)}
         </div>
@@ -1173,10 +1176,8 @@ function renderRosterEdit() {
     const disabled = !picked && sel.length >= N;
     return `
       <div class="cast-card ${picked ? 'picked' : ''} ${disabled ? 'disabled' : ''}" data-id="${c.id}">
-        <div class="cast-avatar">${avatarSVG(c.id, 76)}</div>
+        <div class="cast-avatar" style="--ring:var(--need-${bestNeed(c.stats)})">${avatarSVG(c.id, 92)}</div>
         <div class="cast-name">${c.name} ${c.rookie ? '<span class="rookie">新人</span>' : ''}</div>
-        <div class="cast-tag">${c.tag}</div>
-        <div class="cast-profile">${c.profile || ''}</div>
         ${c.rookie ? '<div class="rookie-trait">🌱 成長2倍・Lvアップで能力+1</div>' : ''}
         <div class="cast-stats">
           ${statRows(c.stats)}
@@ -1208,7 +1209,10 @@ function renderRosterEdit() {
 
   app.innerHTML = `
     <div class="screen">
-      <h2 class="head">メンバー編成 <span id="cnt">DAY ${State.day}</span></h2>
+      <div class="form-head">
+        <span class="day-badge">DAY ${State.day}</span>
+        <h2 class="head">メンバー編成</h2>
+      </div>
       <div class="day-brief">
         <span>🎯 目標 <b>${yen(diff.goal)}</b></span>
         <span>👥 来店 ${diff.customers}組</span>
@@ -1217,7 +1221,6 @@ function renderRosterEdit() {
         ${harder}
       </div>
       ${seatBanner}
-      <p class="head-sub"><span class="warn">🔄 交代する人をタップ（最大2人）→ 下から後任を選ぼう</span></p>
       <div class="cast-grid">${cards}</div>
       <div class="sp-section">
         <div class="sp-out">✨ 交代候補</div>
