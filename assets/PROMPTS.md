@@ -115,3 +115,14 @@
 
 ## 差し込み
 生成画像を上記フォルダに指定名で置いたら「画像を差し込んで」と言えば、コード側を「画像があればそれ／無ければ従来SVG」のフォールバック方式で組み込み、キャッシュ版数を上げます。まず1〜2枚（例: `title.png` か `icon`）で流れを確認するのが安全です。
+
+## ランク紋章（v55・生成済み）
+黒服ランク7段階のエンブレム。プロンプトは `asset-gen/prompts/kurofuku-rank.json`（専用プリセット）にある。
+納品先は `assets/images/rank/1.png`〜`7.png`（1=見習い黒服 … 7=伝説の黒服）。透過PNG・256px・パレット256色。
+
+    cd ../asset-gen && node generate.js --provider openai --preset kurofuku-rank \
+      --out ../kurofuku-game/assets/images/rank/_src
+
+生成後は sharp で `resize(256).png({palette:true})` して 1〜7.png に配置する。
+**プロンプトには必ず「文字・ロゴ・banner のリボン文字は一切描かない。」を入れる**
+（入れないと盾のリボンに "ASSISTANT MANAGER" 等の英字が焼き込まれる）。

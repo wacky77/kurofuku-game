@@ -4,10 +4,10 @@
 // 載っていない id は従来の SVG 似顔絵を表示する（フォールバック）。
 //
 // 画像を追加したら:
-//   1) 該当セット(cast / customer / bg)に id を足す
+//   1) 該当セット(cast / customer / bg / rank)に id を足す
 //   2) ASSET_V を +1（下の index.html / sw.js のキャッシュ版数も揃える）
 // ===============================================
-const ASSET_V = 54;
+const ASSET_V = 55;
 
 // assets/images/logo.png（透過金色ロゴ画像）。true なら画像、false なら logo-wrap 内の
 // CSSテキストロゴ（.logo/.logo-big、v42実装）にフォールバック。
@@ -31,6 +31,8 @@ const ASSET_IMG = {
   ]),
   // assets/images/backgrounds/<name>.jpg
   bg: new Set(['title', 'floor', 'result', 'gameover']),
+  // assets/images/rank/<RANKS の index + 1>.png（黒服ランク7段階の紋章。透過PNG・256px・パレット256色）
+  rank: new Set([0, 1, 2, 3, 4, 5, 6]),
 };
 
 // キャスト画像タグ（従来SVGと同じ .avatar クラスで角丸などを継承）
@@ -43,4 +45,13 @@ function castImg(id, size) {
 function custImg(iconId, size) {
   const s = size || 92;
   return `<img class="cust-svg" src="assets/images/customers/${iconId}.jpg?v=${ASSET_V}" width="${s}" height="${s}" alt="" loading="lazy">`;
+}
+
+// 黒服ランクの紋章。画像が無い index は従来の emoji にフォールバックする。
+// index = RANKS の添字（0=見習い黒服 … 6=伝説の黒服）、fallback = RANKS[index].emoji
+function rankIcon(index, size, fallback, cls) {
+  const extra = cls ? ` ${cls}` : '';
+  if (!ASSET_IMG.rank.has(index)) return `<span class="rank-emoji${extra}">${fallback}</span>`;
+  const s = size || 34;
+  return `<img class="rank-emblem${extra}" src="assets/images/rank/${index + 1}.png?v=${ASSET_V}" width="${s}" height="${s}" alt="" loading="lazy">`;
 }

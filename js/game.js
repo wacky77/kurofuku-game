@@ -345,7 +345,7 @@ function renderTitle() {
   const topSales = (loadScores()[0] || {}).sales || 0;
   const best = rankFor(topSales);
   const bestBadge = topSales > 0
-    ? `<div class="best-rank">最高役職 <span class="best-rank-title">${best.emoji} ${best.title}</span></div>`
+    ? `<div class="best-rank">最高役職 <span class="best-rank-title">${rankIcon(best.index, 20, best.emoji, 'inline')} ${best.title}</span></div>`
     : '';
 
   const logoSparks = Array.from({ length: 7 }, () => {
@@ -892,7 +892,9 @@ function endDay() {
   const prevRankIdx = rankFor(State.totalSales).index;
   State.totalSales += State.sales;
   const newRank = rankFor(State.totalSales);
-  State.rankUp = newRank.index > prevRankIdx ? { from: RANKS[prevRankIdx], to: RANKS[newRank.index] } : null;
+  State.rankUp = newRank.index > prevRankIdx
+    ? { from: RANKS[prevRankIdx], to: RANKS[newRank.index], toIndex: newRank.index }
+    : null;
 
   State.screen = 'dayresult';
   const achieved = State.sales >= State.today.goal;
@@ -947,9 +949,13 @@ function renderDayResult() {
   // 黒服ランク（通算売上ベース）と次の役職までの進捗
   const rk = rankFor(State.totalSales);
   const rankSection = `
-    ${State.rankUp ? `<div class="rankup-banner">🎉 昇格！ ${State.rankUp.from.title} → <b>${State.rankUp.to.emoji} ${State.rankUp.to.title}</b></div>` : ''}
+    ${State.rankUp ? `<div class="rankup-banner">
+      <div class="rankup-medal">${rankIcon(State.rankUp.toIndex, 88, State.rankUp.to.emoji)}</div>
+      <div class="rankup-head">🎉 昇格！</div>
+      <div class="rankup-names">${State.rankUp.from.title} → <b>${State.rankUp.to.title}</b></div>
+    </div>` : ''}
     <div class="rank-card">
-      <div class="rank-now"><span class="rank-emoji">${rk.emoji}</span><span class="rank-title">${rk.title}</span></div>
+      <div class="rank-now">${rankIcon(rk.index, 34, rk.emoji)}<span class="rank-title">${rk.title}</span></div>
       ${rk.next
         ? `<div class="rank-prog"><i style="width:${rk.progress}%"></i></div>
            <div class="rank-next">次の役職「${rk.next.title}」まで あと ${yen(rk.next.min - State.totalSales)}</div>`
@@ -1001,7 +1007,7 @@ function renderDayResult() {
         <div class="gm-celebrate">
           <div class="gmc-face">${avatarSVG(topCast.id, 56)}</div>
           <div class="gmc-body">
-            <div class="gmc-name">👑 No.1キャスト ${topCast.name}</div>
+            <div class="gmc-name">${rankIcon(rk.index, 20, '👑', 'inline')} No.1キャスト ${topCast.name}</div>
             <div class="gmc-line">「${castLine(topCast, kind)}」</div>
           </div>
         </div>`;
