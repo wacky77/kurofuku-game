@@ -179,7 +179,7 @@ function makeCustomer() {
   const needKey = (type.needBias && Math.random() < 0.6)
     ? type.needBias
     : rand(Object.keys(NEEDS));
-  const age = rand(CUSTOMER_AGES);
+  const age = rand(CUSTOMER_AGES_BY_ID[type.id] || CUSTOMER_AGES);
   const ctx = rand(CUSTOMER_CONTEXTS);
   // 本音を隠す客：ニーズを直接言わず、様子ヒント（NEEDS[].hints）から察してもらう
   const vague = Math.random() < State.today.vagueChance;
