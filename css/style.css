@@ -692,6 +692,17 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 .best-rank { font-size: 12px; color: var(--muted); margin-top: -8px; }
 .best-rank-title { color: var(--gold); font-weight: 700; }
 
+/* 生涯キャリア（タイトル常設・全runの累計成績と称号） */
+.career-badge {
+  width: 100%; max-width: 300px; margin: 2px auto 0; padding: 8px 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  text-align: center;
+}
+.career-rank { font-size: 14px; color: var(--gold); }
+.career-rank b { font-weight: 800; }
+.career-line { font-size: 12px; color: var(--text); margin-top: 2px; }
+.career-next { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
 .rank-card {
   width: 100%; max-width: 320px; margin: 2px auto; background: var(--panel);
   border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;

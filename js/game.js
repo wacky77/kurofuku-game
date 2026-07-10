@@ -31,6 +31,7 @@ const State = {
   scoreSyncStatus: '',  // 全国ランキング登録結果（success/local）
   castEarnings: {},     // この run のキャスト別・通算売上（castId → 金額）
   dayEarnings: {},      // その日のキャスト別売上（castId → 金額・毎日リセット）
+  runTimeouts: 0,       // この run で時間切れした回数（隠し実績「迷いなき采配」用）
 };
 
 // ---------- コンボ／育成の調整値 ----------
@@ -153,6 +154,36 @@ function rankingHTML(highlightTs) {
       <span class="rank-sales">${yen(s.sales)}</span>
       <span class="rank-day">DAY${s.day}</span>
     </div>`).join('');
+}
+
+// ---------- 生涯キャリア（localStorage・全runをまたぐ累計成績） ----------
+// runが終わっても積み上がる「生涯売上」等。キャリアランク（CAREER_RANKS）と
+// 隠し実績（夜の顔役 等）の判定元。キーが無い既存ユーザーはゼロ始まり＝後方互換。
+const CAREER_KEY = 'kurofuku_career';
+function loadCareer() {
+  const base = { lifeSales: 0, lifeServes: 0, lifeRepeaters: 0, runs: 0 };
+  try {
+    const v = JSON.parse(localStorage.getItem(CAREER_KEY));
+    if (v && typeof v === 'object') {
+      for (const k of Object.keys(base)) {
+        const n = Number(v[k]);
+        if (Number.isFinite(n) && n >= 0) base[k] = n;
+      }
+    }
+  } catch (e) { /* 非対応環境・壊れたデータは無視してゼロ始まり */ }
+  return base;
+}
+function saveCareer(c) {
+  try { localStorage.setItem(CAREER_KEY, JSON.stringify(c)); } catch (e) { /* 無視 */ }
+}
+// 1日の営業結果を生涯成績へ加算（endDayから）。加算後のキャリアを返す。
+function addCareerDay() {
+  const c = loadCareer();
+  c.lifeSales += State.sales;
+  c.lifeServes += State.log.length;
+  c.lifeRepeaters += State.log.filter(l => l.gotRepeater).length; // その日獲得分のみ＝日をまたいだ二重加算なし
+  saveCareer(c);
+  return c;
 }
 
 function cloudRankingRows(list) {
@@ -390,6 +421,17 @@ function renderTitle() {
     ? `<div class="best-rank">最高役職 <span class="best-rank-title">${rankIcon(best.index, 20, best.emoji, 'inline')} ${best.title}</span></div>`
     : '';
 
+  // 生涯キャリア（全runの累計。1回でも営業していれば常設表示）
+  const career = loadCareer();
+  const cr = careerRankFor(career.lifeSales);
+  const careerBadge = (career.runs > 0 || career.lifeSales > 0)
+    ? `<div class="career-badge">
+         <div class="career-rank">${rankIcon(cr.index, 20, cr.emoji, 'inline')} <b>${cr.title}</b></div>
+         <div class="career-line">生涯売上 ${yen(career.lifeSales)}（通算${career.runs}回営業）</div>
+         ${cr.next ? `<div class="career-next">次の称号「${cr.next.title}」まで あと ${yen(cr.next.min - career.lifeSales)}</div>` : '<div class="career-next">最高の称号に到達！</div>'}
+       </div>`
+    : '';
+
   const logoSparks = Array.from({ length: 7 }, () => {
     const left = -4 + Math.random() * 108;
     const top = -6 + Math.random() * 112;
@@ -410,6 +452,7 @@ function renderTitle() {
       </div>
       <p class="subtitle">〜キャバクラ黒服 育成シミュレーション〜</p>
       ${bestBadge}
+      ${careerBadge}
       <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
       <p class="hint">来るお客に合わせて最適なキャストを付け回し、<br>1日の売上目標を目指せ！</p>
       <div class="title-ranking">${cloudRankingBlock('titleCloudRanking', 5)}</div>
@@ -432,11 +475,13 @@ function renderTitle() {
 function showAchievements() {
   const items = Achieve.DEFS.map(d => {
     const got = Achieve.has(d.id);
+    // 隠し実績は解除するまで内容を伏せる（解除後は通常表示）
+    const secret = !got && d.hidden;
     return `
       <div class="ach-item ${got ? 'got' : 'locked'}">
         <span class="ach-emoji">${got ? d.emoji : '🔒'}</span>
-        <span class="ach-title">${d.title}</span>
-        <span class="ach-desc">${d.desc}</span>
+        <span class="ach-title">${secret ? '？？？' : d.title}</span>
+        <span class="ach-desc">${secret ? '？？？（隠し実績）' : d.desc}</span>
       </div>`;
   }).join('');
 
@@ -464,6 +509,11 @@ function startSelection() {
   State.maxCombo = 0;
   State.castEarnings = {};    // キャスト別売上も run ごとにリセット
   State.dayEarnings = {};
+  State.runTimeouts = 0;      // 時間切れ回数も run ごとにリセット
+  // 生涯キャリア：営業回数（run数）を加算。途中でタイトルへ戻ったrunも1回と数える。
+  const career = loadCareer();
+  career.runs++;
+  saveCareer(career);
   // BGMは enterScreen が画面に応じて切替（スタートボタンのタップが再生許可になる）
   // 全応募プールからランダムで8人を選出（プレイごとに顔ぶれが変わる）
   State.applicants = pickRandom(CAST_POOL, 8);
@@ -690,6 +740,7 @@ function timeUp() {
   const c = State.currentCustomer;
   const lostSales = Math.round(c.budget * 0.1 / 1000) * 1000;
   State.sales += lostSales;
+  State.runTimeouts++;
   if (State.combo >= 2) breakComboBadge();
   State.combo = 0; // 迷っている間にコンボが途切れる
   const result = { star: 0, sales: lostSales, gotRepeater: false, comment: '迷っているうちにお客様は帰ってしまった…' };
@@ -769,6 +820,7 @@ function chooseCast(id) {
     combo: State.combo,
     nominateHit: result.nominateHit,
     level: result.newLevel,
+    custId: cust.iconId, // 客の種別（隠し実績「介抱のプロ」＝drunk判定用）
   });
 
   showResult(cast, result);
@@ -952,6 +1004,9 @@ function endDay() {
   setTimeout(() => achieved ? SFX.fanfare() : SFX.gameover(), 250);
   if (State.rankUp) setTimeout(() => SFX.levelup(), 950); // 昇格ジングル
 
+  // 生涯キャリアへ今日の実績を加算（runが終わっても消えない累計）
+  const career = addCareerDay();
+
   const hits = State.log.filter(l => l.hit).length;
   Achieve.onDayEnd({
     day: State.day,
@@ -960,6 +1015,9 @@ function endDay() {
     repeaters: State.repeaters,
     totalSales: State.totalSales,
     rankIndex: newRank.index,
+    lifeSales: career.lifeSales,                                        // 隠し実績「夜に生きる男」
+    runTimeouts: State.runTimeouts,                                     // 隠し実績「迷いなき采配」
+    allRookie: State.roster.length > 0 && State.roster.every(c => c.rookie), // 隠し実績「フレッシュ開店」
   });
 
   renderDayResult();

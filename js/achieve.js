@@ -23,6 +23,12 @@ const Achieve = (() => {
     { id: 'm5',       emoji: '💎', title: '五百万の男',     desc: '通算売上500万円を突破する' },
     { id: 'lv5',      emoji: '🎓', title: '育成の名人',     desc: 'キャストを Lv5（最大）まで育てる' },
     { id: 'tencho',   emoji: '👑', title: '店長就任',       desc: '役職「店長」に昇格する' },
+    // --- 隠し実績（hidden: true。解除するまで一覧では「？？？」表示） ---
+    { id: 'drunk5',   emoji: '🥴', title: '介抱のプロ',     desc: '酔っ払いのお客様に★5の接客をする',             hidden: true },
+    { id: 'nolost',   emoji: '⏱️', title: '迷いなき采配',   desc: '一度も時間切れせずに DAY5 の目標を達成する',    hidden: true },
+    { id: 'rookies',  emoji: '🌱', title: 'フレッシュ開店', desc: '新人だけの編成で1日の目標を達成する',           hidden: true },
+    { id: 'legend',   emoji: '🏆', title: '生きる伝説',     desc: '役職「伝説の黒服」に昇格する',                  hidden: true },
+    { id: 'life30m',  emoji: '🌃', title: '夜に生きる男',   desc: '生涯売上3000万円を突破する（全プレイの通算）',  hidden: true },
   ];
 
   let unlocked = {};
@@ -72,6 +78,7 @@ const Achieve = (() => {
     if (ev.nominateHit === true) unlock('nominate');
     if (ev.sales >= 150000) unlock('big1');
     if (ev.level >= 5) unlock('lv5');
+    if (ev.custId === 'drunk' && ev.star >= 5) unlock('drunk5'); // 隠し：酔っ払いに★5
   }
 
   // 1日の終了ごと（endDay）
@@ -87,6 +94,11 @@ const Achieve = (() => {
     if (ev.totalSales >= 1000000) unlock('m1');
     if (ev.totalSales >= 5000000) unlock('m5');
     if (ev.rankIndex >= 4) unlock('tencho'); // RANKS[4] = 店長
+    // --- 隠し実績 ---
+    if (ev.achieved && ev.day >= 5 && ev.runTimeouts === 0) unlock('nolost'); // run内 時間切れ0でDAY5達成
+    if (ev.achieved && ev.allRookie) unlock('rookies');                       // 編成全員が新人で目標達成
+    if (ev.rankIndex >= 6) unlock('legend');                                  // RANKS[6] = 伝説の黒服
+    if (ev.lifeSales >= 30000000) unlock('life30m');                          // 生涯売上3000万（全run通算）
   }
 
   return {

@@ -601,6 +601,26 @@ function rankFor(totalSales) {
   return { index: i, title: cur.title, emoji: cur.emoji, next, progress };
 }
 
+// --- 生涯キャリアランク（全runの累計「生涯売上」で昇る称号。RANKSの上位延長）---
+// index 0〜6 は RANKS と同一（＝紋章画像もそのまま流用）。7以降は生涯限定の上位称号
+// （紋章画像なし→rankIcon が emoji にフォールバック）。
+const CAREER_RANKS = [
+  ...RANKS,
+  { min: 20000000, title: '夜の顔役',         emoji: '🌃' },
+  { min: 35000000, title: '夜の帝王',         emoji: '🦁' },
+  { min: 60000000, title: '不夜城のオーナー', emoji: '🏰' },
+];
+
+// 生涯売上から現在のキャリアランク・次のランク・進捗(%)を返す（rankFor の生涯版）
+function careerRankFor(lifeSales) {
+  let i = 0;
+  for (let k = 0; k < CAREER_RANKS.length; k++) { if (lifeSales >= CAREER_RANKS[k].min) i = k; }
+  const cur = CAREER_RANKS[i];
+  const next = CAREER_RANKS[i + 1] || null;
+  const progress = next ? Math.min(100, Math.round((lifeSales - cur.min) / (next.min - cur.min) * 100)) : 100;
+  return { index: i, title: cur.title, emoji: cur.emoji, next, progress };
+}
+
 // その日の実効設定を返す（DAYが進むほど厳しくなる）
 function difficulty(day) {
   const d = DAY_CONFIG;
