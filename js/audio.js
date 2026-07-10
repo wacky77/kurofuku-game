@@ -16,9 +16,52 @@ const SFX = (() => {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       ctx = new AC();
+      preloadSamples(); // 初回のユーザー操作でSEサンプル(mp3)を先読み
     }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
+  }
+
+  // --- 効果音サンプル（外部mp3：assets/audio/sfx/<name>.mp3）---
+  // 合成音の上位互換。読み込み前・デコード失敗時は各メソッドが合成音にフォールバックする。
+  const SFX_FILES = ['button-tap', 'cash-register', 'coin-get', 'champagne-pop', 'level-up', 'fail-buzzer'];
+  const samples = {};          // name -> AudioBuffer | 'loading' | 'error'
+  let samplesRequested = false;
+
+  function sampleLoad(name) {
+    if (samples[name]) return;
+    samples[name] = 'loading';
+    const v = typeof ASSET_V !== 'undefined' ? ASSET_V : 0;
+    fetch(`assets/audio/sfx/${name}.mp3?v=${v}`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then((ab) => new Promise((res, rej) => {
+        const c = ac();
+        if (!c) rej(new Error('no AudioContext'));
+        else c.decodeAudioData(ab, res, rej);
+      }))
+      .then((buf) => { samples[name] = buf; })
+      .catch(() => { samples[name] = 'error'; });
+  }
+
+  function preloadSamples() {
+    if (samplesRequested) return;
+    samplesRequested = true;
+    SFX_FILES.forEach(sampleLoad);
+  }
+
+  // サンプルを鳴らす。鳴らせたら true（＝合成音フォールバック不要）を返す。
+  function playSample(name, vol = 0.8) {
+    const c = ac();
+    if (!c || muted) return false;
+    const e = samples[name];
+    if (!e || typeof e !== 'object') return false; // 未読込 / エラー
+    const src = c.createBufferSource();
+    src.buffer = e;
+    const g = c.createGain();
+    g.gain.value = vol;
+    src.connect(g).connect(c.destination);
+    src.start();
+    return true;
   }
 
   // 単音を鳴らす。freq: Hz / dur: 秒 / type: 波形 / vol: 音量 / at: 開始遅延
@@ -180,11 +223,11 @@ const SFX = (() => {
       return muted;
     },
     // UIタップ
-    tap()   { tone(520, 0.07, 'square', 0.12); },
+    tap()   { if (!playSample('button-tap', 0.5)) tone(520, 0.07, 'square', 0.12); },
     // 客が来店
     arrive(){ slide(300, 520, 0.16, 'triangle', 0.16); },
-    // イベント客・指名客の来店（期待感のある上昇ジングル）
-    vip()   { melody(['E5', 'G5', 'C6'], 0.07, 'triangle', 0.2); },
+    // イベント客・指名客の来店（シャンパンが弾ける華やかな音）
+    vip()   { if (!playSample('champagne-pop', 0.8)) melody(['E5', 'G5', 'C6'], 0.07, 'triangle', 0.2); },
     // 秒読み（残り3秒）
     tick()  { tone(880, 0.05, 'square', 0.09); },
     // ★判定（星の数で豪華さが変わる）
@@ -193,12 +236,12 @@ const SFX = (() => {
       else if (n >= 4) melody(['E','G','C5','E5'], 0.08, 'triangle', 0.22);
       else if (n >= 3) melody(['C','E','G'], 0.09, 'triangle', 0.2);
       else if (n >= 2) melody(['C','C'], 0.1, 'sine', 0.16);
-      else             slide(300, 150, 0.3, 'sawtooth', 0.16); // 失敗
+      else if (!playSample('fail-buzzer', 0.7)) slide(300, 150, 0.3, 'sawtooth', 0.16); // 失敗
     },
-    // 売上（レジ）
-    cash()  { tone(1318, 0.06, 'square', 0.14); tone(1046, 0.12, 'square', 0.12, 0.05); },
-    // コンボ加算（連続的中）
-    combo(n){ tone(NOTE.C5 + n * 60, 0.09, 'square', 0.16); },
+    // 売上（レジのチャリン）
+    cash()  { if (!playSample('cash-register', 0.8)) { tone(1318, 0.06, 'square', 0.14); tone(1046, 0.12, 'square', 0.12, 0.05); } },
+    // コンボ加算（連続的中＝コインを稼ぐ音）
+    combo(n){ if (!playSample('coin-get', 0.6)) tone(NOTE.C5 + n * 60, 0.09, 'square', 0.16); },
     // 指名（リピーター再来店の成功）
     nominate(){ melody(['G','C5','G','C6'], 0.07, 'triangle', 0.24); },
     // 1日クリア
@@ -206,7 +249,7 @@ const SFX = (() => {
     // ゲームオーバー
     gameover(){ melody(['G','F','E','D','C'], 0.16, 'sawtooth', 0.2); },
     // レベルアップ
-    levelup(){ melody(['C5','E5','G5'], 0.06, 'square', 0.22); },
+    levelup(){ if (!playSample('level-up', 0.8)) melody(['C5','E5','G5'], 0.06, 'square', 0.22); },
     // 新メンバー入店（キラッと駆け上がるお披露目ジングル）
     newcomer(){ melody(['C5','E5','G5','C6', 1568], 0.09, 'triangle', 0.24); slide(600, 1800, 0.5, 'sine', 0.06, 0.15); },
     // BGM 切替（name: title/floor/result/gameover。null/未知の名前で停止）
