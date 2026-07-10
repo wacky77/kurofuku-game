@@ -35,6 +35,7 @@ function __mkEl() {
 var document = {
   getElementById: () => __mkEl(),
   createElement: () => __mkEl(),
+  querySelector: () => null,
   querySelectorAll: () => [],
   body: __mkEl(),
 };
@@ -162,7 +163,7 @@ SIM_RESULT = { config: DAY_CONFIG, res: simulate(SIM_RUNS) };
 
 const sandbox = { console, SIM_RUNS: RUNS, SIM_MAXDAY: MAXDAY, SIM_OVERRIDE: OVERRIDE, SIM_RESULT: null };
 vm.createContext(sandbox);
-vm.runInContext(STUBS + read('js/data.js') + '\n' + read('js/game.js') + '\n' + HARNESS, sandbox);
+vm.runInContext(STUBS + read('js/assets.js') + '\n' + read('js/data.js') + '\n' + read('js/game.js') + '\n' + HARNESS, sandbox);
 
 // ---------- レポート ----------
 const { config: cfg, res } = sandbox.SIM_RESULT;
