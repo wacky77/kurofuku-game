@@ -6,8 +6,9 @@
 // activate 時に旧世代を削除し、バージョン付きURLが端末へ蓄積し続けるのを防ぐ。
 importScripts('./js/assets.js');
 
-const CACHE = 'kurofuku-v' + ASSET_V;
-const MEDIA_CACHE = 'kurofuku-media-v' + ASSET_V;
+const CACHE_PREFIX = 'kurofuku-';
+const CACHE = CACHE_PREFIX + 'v' + ASSET_V;
+const MEDIA_CACHE = CACHE_PREFIX + 'media-v' + ASSET_V;
 
 const ASSETS = [
   './',
@@ -62,7 +63,9 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k !== CACHE && k !== MEDIA_CACHE).map((k) => caches.delete(k))
+        keys
+          .filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE && k !== MEDIA_CACHE)
+          .map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
