@@ -517,6 +517,17 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 /* ---------- ハイスコア／ランキング ---------- */
 .ranking { width: 100%; max-width: 320px; margin: 4px auto; }
 .title-ranking { margin-top: 6px; }
+.cloud-ranking { padding: 9px; border-radius: 14px; border: 1px solid rgba(230,193,75,.28); background: rgba(13,13,18,.45); }
+.cloud-ranking .rank-row { padding-top: 5px; padding-bottom: 5px; }
+.local-ranking { width: 100%; max-width: 320px; margin: -10px auto 0; }
+.local-ranking > summary {
+  list-style: none; cursor: pointer; color: var(--muted); font-size: 12px;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px;
+}
+.local-ranking > summary::-webkit-details-marker { display: none; }
+.local-ranking > summary::after { content: " ▾"; color: var(--gold-dim); }
+.local-ranking[open] > summary::after { content: " ▴"; }
+.local-ranking-body { margin-top: 6px; }
 .ranking-head { font-size: 13px; color: var(--gold); margin-bottom: 6px; text-align: center; }
 .rank-row {
   display: grid; grid-template-columns: 28px 1fr auto auto; align-items: center; gap: 8px;
@@ -567,6 +578,7 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 
 .score-register { width: 100%; max-width: 320px; margin: 4px auto; text-align: center; }
 .sr-title { font-size: 15px; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+.sr-note { font-size: 11px; color: var(--muted); margin: -3px 0 8px; }
 .sr-form { display: flex; gap: 8px; }
 .name-input {
   flex: 1; min-width: 0; border-radius: 12px; border: 1.5px solid var(--line);
@@ -574,6 +586,12 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 }
 .name-input:focus { outline: none; border-color: var(--gold); }
 .sr-btn { width: auto; max-width: none; padding: 12px 20px; flex: none; }
+.score-sync {
+  width: 100%; max-width: 320px; margin: 5px auto; padding: 9px 12px;
+  border-radius: 11px; font-size: 12px; font-weight: 700; text-align: center;
+}
+.score-sync.success { color: var(--good); border: 1px solid rgba(75,230,138,.4); background: rgba(75,230,138,.08); }
+.score-sync.local { color: var(--muted); border: 1px solid var(--line); background: var(--panel); }
 
 /* 接客ふりかえり（.rsec で折りたたみ） */
 .review-list { display: flex; flex-direction: column; gap: 8px; }

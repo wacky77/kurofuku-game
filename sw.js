@@ -20,6 +20,8 @@ const ASSETS = [
     './js/avatars.js',
     './js/audio.js',
     './js/achieve.js',
+    './js/firebase-config.js',
+    './js/cloud-scores.js',
     './js/game.js',
   ].map((path) => path + '?v=' + ASSET_V),
   './assets/icon.svg',

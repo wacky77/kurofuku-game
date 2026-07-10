@@ -28,6 +28,7 @@ const State = {
   repeaterPool: [],     // 再来店しうるリピーター（{castId, need, emoji, title, bg, bg2, budget}）
   scoreSaved: false,    // この run のスコアを登録済みか
   lastScoreTs: null,    // 直近に登録したスコアの識別子（ランキング強調用）
+  scoreSyncStatus: '',  // 全国ランキング登録結果（success/local）
   castEarnings: {},     // この run のキャスト別・通算売上（castId → 金額）
   dayEarnings: {},      // その日のキャスト別売上（castId → 金額・毎日リセット）
 };
@@ -122,9 +123,14 @@ function loadScores() {
 function saveScores(list) {
   try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch (e) { /* 非対応環境は無視 */ }
 }
-// このスコアがランクインするか（0始まりの順位、しなければ -1）
-function scoreRank(sales) {
-  const higher = loadScores().filter(s => s.sales >= sales).length;
+// このスコアがランクインするか（登録時と同じ 売上→DAY→時刻 順で比較）
+function scoreRank(sales, day, ts) {
+  const target = { sales, day, ts: ts || Number.MAX_SAFE_INTEGER };
+  const higher = loadScores().filter(s =>
+    s.sales > target.sales
+      || (s.sales === target.sales && s.day > target.day)
+      || (s.sales === target.sales && s.day === target.day && s.ts < target.ts)
+  ).length;
   return higher < HS_MAX ? higher : -1;
 }
 function registerScore(name, sales, day, ts) {
@@ -147,6 +153,42 @@ function rankingHTML(highlightTs) {
       <span class="rank-sales">${yen(s.sales)}</span>
       <span class="rank-day">DAY${s.day}</span>
     </div>`).join('');
+}
+
+function cloudRankingRows(list) {
+  if (!list.length) return '<div class="rank-empty">まだ記録がありません</div>';
+  const pos = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
+  return list.map((s, i) => `
+    <div class="rank-row">
+      <span class="rank-pos">${pos[i]}</span>
+      <span class="rank-name">${escapeHTML(s.name)}</span>
+      <span class="rank-sales">${yen(s.sales)}</span>
+      <span class="rank-day">DAY${s.day}</span>
+    </div>`).join('');
+}
+
+function cloudRankingBlock(id, max) {
+  const n = max || 10;
+  return `<div class="ranking cloud-ranking">
+    <div class="ranking-head">🌐 全国ランキング TOP${n}</div>
+    <div id="${id}" class="cloud-ranking-body"><div class="rank-empty">読み込み中…</div></div>
+  </div>`;
+}
+
+function loadCloudRanking(id, max) {
+  const host = document.getElementById(id);
+  if (!host) return;
+  if (typeof CloudScores === 'undefined' || !CloudScores.isConfigured()) {
+    host.innerHTML = '<div class="rank-empty">全国ランキングは設定待ちです</div>';
+    return;
+  }
+  CloudScores.topScores(max || 10).then((scores) => {
+    const current = document.getElementById(id);
+    if (current) current.innerHTML = cloudRankingRows(scores);
+  }).catch(() => {
+    const current = document.getElementById(id);
+    if (current) current.innerHTML = '<div class="rank-empty">通信できません（端末記録は利用できます）</div>';
+  });
 }
 
 // 予算に客単価補正をかけ、1000円単位に丸める
@@ -370,10 +412,11 @@ function renderTitle() {
       ${bestBadge}
       <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
       <p class="hint">来るお客に合わせて最適なキャストを付け回し、<br>1日の売上目標を目指せ！</p>
-      <div class="ranking title-ranking">
-        <div class="ranking-head">🏆 ハイスコア（通算売上）</div>
-        ${rankingHTML()}
-      </div>
+      <div class="title-ranking">${cloudRankingBlock('titleCloudRanking', 5)}</div>
+      <details class="ranking local-ranking">
+        <summary>📱 この端末の記録</summary>
+        <div class="local-ranking-body">${rankingHTML()}</div>
+      </details>
       <button class="btn btn-ghost ach-btn" id="achBtn">🏅 実績 <span class="ach-count">${Achieve.count()}/${Achieve.DEFS.length}</span></button>
     </div>`;
   document.getElementById('startBtn').onclick = () => { SFX.tap(); startSelection(); };
@@ -382,6 +425,7 @@ function renderTitle() {
     SFX.toggle();
     e.currentTarget.textContent = SFX.muted ? '🔇' : '🔊';
   };
+  loadCloudRanking('titleCloudRanking', 5);
 }
 
 // ---------- 実績一覧（タイトルから開く） ----------
@@ -414,6 +458,7 @@ function startSelection() {
   State.selectedIds = [];
   State.scoreSaved = false;   // 新しい run はスコア未登録から
   State.lastScoreTs = null;
+  State.scoreSyncStatus = '';
   State.repeaterPool = [];    // リピーターは run ごとにリセット
   State.combo = 0;
   State.maxCombo = 0;
@@ -1021,21 +1066,24 @@ function renderDayResult() {
   }
 
   // 目標未達はゲームオーバー（翌日には進めない）。スコアはここで登録。
-  const rank = achieved ? -1 : scoreRank(State.totalSales);
-  const canRegister = rank >= 0 && !State.scoreSaved;
+  const rank = achieved ? -1 : scoreRank(State.totalSales, State.day);
+  const canRegister = !achieved && !State.scoreSaved;
 
   let scoreArea = '';
   if (!achieved) {
     scoreArea = canRegister
       ? `<div class="score-register">
-           <div class="sr-title">🏆 ランキング ${rank + 1}位にランクイン！</div>
+           <div class="sr-title">🌐 全国ランキングへ記録${rank >= 0 ? `（端末 ${rank + 1}位）` : ''}</div>
+           <div class="sr-note">全国ランキングと、この端末の記録に保存します</div>
            <div class="sr-form">
              <input id="nameInput" class="name-input" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="off">
              <button class="btn btn-primary sr-btn" id="regBtn">登録</button>
            </div>
          </div>`
-      : `<div class="ranking">
-           <div class="ranking-head">🏆 ハイスコア（通算売上）</div>
+      : `${State.scoreSyncStatus ? `<div class="score-sync ${State.scoreSyncStatus === 'success' ? 'success' : 'local'}">${State.scoreSyncStatus === 'success' ? '✓ 全国ランキングに登録しました' : '📱 端末に保存しました（全国ランキングは未接続）'}</div>` : ''}
+         ${cloudRankingBlock('resultCloudRanking', 10)}
+         <div class="ranking">
+           <div class="ranking-head">📱 この端末の記録</div>
            ${rankingHTML(State.lastScoreTs)}
          </div>`;
   }
@@ -1077,6 +1125,7 @@ function renderDayResult() {
     </div>`;
 
   animateCount(document.getElementById('bigSales'), State.sales, 800);
+  if (!achieved && State.scoreSaved) loadCloudRanking('resultCloudRanking');
 
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) shareBtn.onclick = () => { SFX.tap(); shareResult(); };
@@ -1095,13 +1144,28 @@ function renderDayResult() {
   } else {
     document.getElementById('retryBtn').onclick = resetToTitle;
     if (canRegister) {
-      document.getElementById('regBtn').onclick = () => {
+      const register = async () => {
+        const btn = document.getElementById('regBtn');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = '登録中…';
         const name = document.getElementById('nameInput').value.trim();
         const ts = Date.now();
         registerScore(name, State.totalSales, State.day, ts);
+        State.scoreSyncStatus = 'local';
+        try {
+          if (typeof CloudScores !== 'undefined' && CloudScores.isConfigured()) {
+            await CloudScores.submitScore({ name, sales: State.totalSales, day: State.day });
+            State.scoreSyncStatus = 'success';
+          }
+        } catch (e) { /* 端末内には保存済み。全国登録だけ失敗として扱う */ }
         State.scoreSaved = true;
         State.lastScoreTs = ts;
         renderDayResult(); // 登録フォーム→ランキング表示に切り替え
+      };
+      document.getElementById('regBtn').onclick = register;
+      document.getElementById('nameInput').onkeydown = (e) => {
+        if (e.key === 'Enter') register();
       };
     }
   }
