@@ -331,29 +331,34 @@ body {
 .cust-svg { border-radius: 24px; }
 /* 外部AI画像（<img>）も似顔絵SVGと同じ枠に収める */
 img.avatar, img.cust-svg { object-fit: cover; display: block; }
+/* ニーズを「色」で示す（v54〜）：本音が見えている客（.need-shown）だけ顔まわりを
+   ニーズ色のリングで縁取る。本音を隠す客（.need-hidden）は --cust-need 未設定＝透明で色が出ない。
+   レイアウトずれを避けるため box-shadow で描画（border-radius:24px は .cust-svg のまま維持）。 */
+.customer .cust-svg { box-shadow: 0 0 0 3px var(--cust-need, transparent), 0 0 16px -2px var(--cust-need, transparent); transition: box-shadow .3s; }
 .cust-name { font-weight: 800; font-size: 18px; color: var(--gold); margin: 4px 0 0; letter-spacing: .02em; }
 /* 称号と年代・状況は1行にまとめて表示（・区切り） */
 .cust-title { font-weight: 700; margin: 2px 0 4px; font-size: 12px; color: var(--muted); }
 .cust-sep { font-weight: 400; opacity: .6; }
 .customer.event .cust-title { color: var(--pink); }
 .cust-line { font-size: 13px; color: var(--text); font-style: italic; opacity: .82; margin: 6px auto 2px; max-width: 90%; }
-.cust-need { font-size: 16px; color: var(--gold); margin: 8px 0 6px; }
 .cust-budget {
   display: inline-block; font-size: 12px; font-weight: 700; color: var(--text);
   background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px;
   padding: 3px 12px; margin-top: 2px;
 }
-/* 本音を隠す客：ニーズの代わりに「様子ヒント」を表示（察してもらう）。
-   ラベルは出さず、文中の決め手の語句だけを色・サイズで強調して本音を匂わせる。
+/* 本音が見えている客のムードチップ（v54〜）：ニーズ名の文字は出さず、アイコン＋ニーズ色の縁取りだけで示す */
+.cust-mood {
+  display: inline-flex; align-items: center; justify-content: center; margin: 8px auto 6px;
+  padding: 5px 18px; border-radius: 999px; border: 2px solid var(--cust-need, var(--line));
+  background: rgba(255,255,255,.05);
+}
+.cust-mood .mood-icon { font-size: 22px; line-height: 1; filter: drop-shadow(0 0 6px var(--cust-need)); }
+/* 本音を隠す客：ニーズ色を完全に伏せ、様子ヒントだけをニュートラル色で表示（察してもらう）。
+   ラベルは出さず、文中の決め手の語句だけをゴールドの太字で浮かせる（ニーズ色にはしない＝色漏れ防止）。
    v47〜: ヒント文は会話文ではなく見た目の観察描写（地の文）のため非イタリックに。 */
-.cust-need.vague { font-size: 13.5px; color: var(--text); margin: 8px auto 4px; max-width: 92%; line-height: 1.6; }
-/* 決め手の語句（.hint-key）：本文よりひとまわり大きく・太字・非イタリックで浮かせる。ニーズごとに色分け */
-.cust-need.vague .hint-key { font-size: 15px; font-weight: 800; font-style: normal; }
-.hint-heal  { color: var(--need-heal); }
-.hint-talk  { color: var(--need-talk); }
-.hint-price { color: var(--need-price); }
-.hint-smile { color: var(--need-smile); }
-/* ニーズ4色の汎用クラス（cust-need・振り返りラベル等。nomination の cust-need 上書きより弱い） */
+.cust-hint { font-size: 13.5px; color: var(--text); margin: 8px auto 4px; max-width: 92%; line-height: 1.6; text-align: center; }
+.cust-hint .hint-key { font-weight: 800; color: var(--gold); }
+/* ニーズ4色の汎用クラス（振り返りラベル・結果ポップの答え合わせで使用） */
 .need-heal  { color: var(--need-heal); }
 .need-talk  { color: var(--need-talk); }
 .need-price { color: var(--need-price); }
@@ -659,7 +664,6 @@ img.avatar, img.cust-svg { object-fit: cover; display: block; }
 /* 指名客（リピーター再来店） */
 .customer.nomination { border-color: var(--gold); background: linear-gradient(160deg, #2a2312, var(--panel)); box-shadow: 0 0 22px rgba(230,193,75,.18); }
 .customer.nomination .cust-title { color: var(--gold); }
-.customer.nomination .cust-need { color: #fff2b8; }
 
 /* 結果ポップアップの追加行 */
 .res-combo { font-size: 13px; font-weight: 700; color: #ff9d3c; }

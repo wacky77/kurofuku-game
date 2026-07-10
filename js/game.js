@@ -106,10 +106,10 @@ function statRows(s) {
 function escapeHTML(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-// 本音を隠す客のヒント文中の **語句** を、ニーズ別の色付き強調表示に変換
-// （メタ的なラベル文言は出さず、文中の決め手の語感だけで本音を匂わせる）
-function formatHint(text, needKey) {
-  return String(text).replace(/\*\*(.+?)\*\*/g, (_, word) => `<b class="hint-key hint-${needKey}">${word}</b>`);
+// 本音を隠す客のヒント文中の **語句** を強調表示に変換（v54〜ニーズ色は付けない＝色は本音を隠す客だけ完全に伏せる）。
+// メタ的なラベル文言は出さず、文中の決め手の語感だけで本音を匂わせる。決め手語句はゴールドの太字で浮かせる。
+function formatHint(text) {
+  return String(text).replace(/\*\*(.+?)\*\*/g, (_, word) => `<b class="hint-key">${word}</b>`);
 }
 
 // ---------- ハイスコア（localStorage・通算売上のTop5ランキング） ----------
@@ -219,7 +219,7 @@ function makeNomination(rep) {
     bg2: rep.bg2,
     age: rep.age,
     profile: '常連さん・再来店',
-    line: `${cast ? cast.name : ''}ちゃん、いるかな？`,
+    line: nominationLine(cast),
     desc: `${cast ? cast.name : '？'}ちゃんをご指名`,
     need: rep.need,
     budget: Math.round(rep.budget * 1.1 / 1000) * 1000, // 常連は少し弾む
@@ -570,7 +570,7 @@ function renderPlay() {
       ${comboBadge}
       ${vignette}
 
-      <div class="customer ${custClass}">
+      <div class="customer ${custClass} ${c.vague ? 'need-hidden' : 'need-shown'}"${c.vague ? '' : ` style="--cust-need: var(--need-${c.need})"`}>
         <div class="timer" id="timer">
           <svg class="timer-ring" viewBox="0 0 44 44">
             <circle class="timer-ring-bg" cx="22" cy="22" r="19"></circle>
@@ -583,8 +583,8 @@ function renderPlay() {
         <div class="cust-title">${custTitle}${c.profile ? `<span class="cust-sep"> ・ </span>${c.profile}` : ''}</div>
         ${c.line ? `<div class="cust-line">“${c.line}”</div>` : ''}
         ${c.vague
-          ? `<div class="cust-need vague">🤔 ${formatHint(c.hint, c.need)}</div>`
-          : `<div class="cust-need need-${c.need}">「${c.desc}」</div>`}
+          ? `<div class="cust-hint">${formatHint(c.hint)}</div>`
+          : `<div class="cust-mood"><span class="mood-icon">${NEED_ICON[c.need]}</span></div>`}
         <div class="cust-budget">💰 ${yen(c.budget)}</div>
       </div>
 

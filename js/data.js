@@ -225,11 +225,77 @@ function castLine(cast, kind) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : '';
 }
 
+// --- 指名客の来店セリフ（v54） ---
+// 「その子にまた会いに来た常連」の体。{name} はキャスト名に置換。
+// NOMINATION_LINES: 誰にでも使える汎用の指名理由（base）。
+// NOMINATION_BY_VOICE: 指名相手キャストの性格タイプ（CAST_VOICES のキー）に寄せた指名理由。
+//   無いタイプは base のみにフォールバックする。
+const NOMINATION_LINES = [
+  '{name}ちゃん、いるかな？また会いたくて',
+  '{name}ちゃん指名で。前より忙しくなった？',
+  '今日も{name}ちゃんにお願いできる？',
+  '{name}ちゃんに会いに、また来ちゃったよ',
+  '{name}ちゃん、覚えてるかな。常連のあれだよ',
+  '近くまで来たから、{name}ちゃんの顔だけでも',
+  '{name}ちゃんがいる日を狙って来たんだ',
+  'また{name}ちゃんとゆっくり話したくてね',
+];
+const NOMINATION_BY_VOICE = {
+  iyashi: [
+    '{name}ちゃんに会うと、なんだかホッとするんだよな',
+    '疲れが溜まっててさ。{name}ちゃんに癒してもらいたくて',
+  ],
+  talk: [
+    '{name}ちゃんの毒舌が恋しくてさ、また来ちゃった',
+    '{name}ちゃんと喋ってないと調子狂うんだよ',
+  ],
+  rookie: [
+    '{name}ちゃん、また指名しちゃっていい？応援してるんだ',
+    '{name}ちゃんの成長っぷり、見届けたくてね',
+  ],
+  pro: [
+    '{name}ちゃん指名で。今日もいい酒を空けさせてくれ',
+    '{name}ちゃんに会うと財布の紐が緩むんだよなァ',
+  ],
+  cool: [
+    '{name}ちゃんの落ち着いた感じが、また恋しくなってね',
+    '{name}ちゃん、いるかな。静かに飲みたい気分でさ',
+  ],
+  genki: [
+    '{name}ちゃんのパワー、また分けてほしくてさ！',
+    '{name}ちゃんに会うと元気出るんだよなァ、また来たよ',
+  ],
+  balance: [
+    '{name}ちゃんなら安心して任せられるからね、また指名で',
+    '{name}ちゃんの気配り、また恋しくなってさ',
+  ],
+  onee: [
+    '{name}さんに、また大人の夜を作ってもらいたくてね',
+    '{name}さんの色気にやられて、また来ちゃったよ',
+  ],
+  gal: [
+    '{name}ちゃんに会いたくて来たんだけど、いる？',
+    '{name}ちゃんとまたバカ騒ぎしたくてさ',
+  ],
+  gal_gozaru: [
+    '{name}ちゃんの「〜でござる」がクセになってさ、また会いたくて',
+    'あの喋り方するのは{name}ちゃんだけだろ？また指名するよ',
+  ],
+};
+// 指名客の来店セリフを1つ返す（cast: 指名先。無ければ {name} を空文字に）
+function nominationLine(cast) {
+  const name = cast ? cast.name : '';
+  const pool = NOMINATION_LINES.slice();
+  if (cast && NOMINATION_BY_VOICE[cast.voice]) pool.push(...NOMINATION_BY_VOICE[cast.voice]);
+  return rand(pool).replace(/\{name\}/g, name);
+}
+
 // --- お客のニーズ種別 ---
 // key: 内部キー / label: 表示 / need: 重視するキャストのステータス
 // hints: 「本音を隠す客」用の様子ヒント（ニーズを直接言わず、この文から察してもらう）
 // hints内の **語句** は本音の決め手となる一語・一句のマーカー（プレーンテキスト。HTMLではない）。
-// game.js の formatHint() が <b class="hint-key hint-{need}">語句</b> に変換して表示する。
+// game.js の formatHint() が <b class="hint-key">語句</b>（ゴールド太字・ニュートラル）に変換して表示する。
+// v54〜: 本音を隠す客は「色を伏せる」仕様のため、決め手語句はニーズ色にせず色で本音を漏らさない。
 const NEEDS = {
   heal:  { label: '癒されたい',       need: 'heal',
     hints: ['**目の下のクマ**が濃い', '**肩を落として**うなだれている', '**足取りが重く**、ため息交じり', '**こめかみ**を指で押さえている'] },
@@ -240,6 +306,10 @@ const NEEDS = {
   smile: { label: '元気をもらいたい', need: 'smile',
     hints: ['**うつむき加減**で肩を落とす', '**表情が暗く**沈んでいる', '**口角**が下がったままだ', '**視線が定まらず**うつろだ'] },
 };
+
+// ニーズ別のムードアイコン（v54〜。本音が見えている客のムードチップに表示。ニーズ名の文字は出さず
+// アイコンだけで示す。予算表示の💰と被らない絵文字を選定）
+const NEED_ICON = { heal: '🌿', talk: '💬', price: '🍾', smile: '☀️' };
 
 // --- お客の名字（来店客ごとにランダムで割り当て。表示は「〇〇さん」）---
 const CUSTOMER_NAMES = [
@@ -450,10 +520,14 @@ const CUSTOMER_TYPES = [
 // 均等25%だと高単価キャストの期待売上シェアが38%まで膨らむ（癒し13%）ため、
 // 30/15/30/25 に重み付けして4ニーズをほぼ均等（DAY8で 癒し15/トーク31/単価28/笑顔25%）にした。
 const EVENTS = [
-  { id: 'birthday', title: '誕生日客', emoji: '🎂', context: '今日が誕生日', need: 'smile', budget: 70000,  bonusMult: 1.5, weight: 30, desc: '盛大に祝って喜ばせたい！',       bg: '#3a1e2e', bg2: '#5c3050', lines: ['今日オレの誕生日なんだ！', 'パーッと祝ってほしいな'] },
-  { id: 'ceo',      title: '社長来店', emoji: '🤵', context: 'VIP・大口',    need: 'price', budget: 140000, bonusMult: 1.6, weight: 15, desc: '太い客。高単価キャストで攻めたい。', bg: '#322a12', bg2: '#5c4a14', lines: ['うちの連中も連れて来たよ', '今日はいくら使ってもいい'] },
-  { id: 'drunk',    title: '酔っ払い', emoji: '🥴', context: 'かなり酔ってる', need: 'heal',  budget: 35000,  bonusMult: 1.2, weight: 30, desc: '落ち着かせられるキャストを。',     bg: '#2a2e1e', bg2: '#464e30', lines: ['もう…けっこう飲んでるぅ…', 'ちょっと落ち着きたいなァ…'] },
-  { id: 'vip',      title: 'VIP指名',  emoji: '👑', context: '常連の上客',    need: 'talk',  budget: 105000, bonusMult: 1.5, weight: 25, desc: '会話で満足させればリピート確実。', bg: '#2a1e3a', bg2: '#463066', lines: ['いつもの子はいるかい？', '今日も楽しませてくれよ'] },
+  { id: 'birthday', title: '誕生日客', emoji: '🎂', context: '今日が誕生日', need: 'smile', budget: 70000,  bonusMult: 1.5, weight: 30, desc: '盛大に祝って喜ばせたい！',       bg: '#3a1e2e', bg2: '#5c3050',
+    lines: ['今日オレの誕生日なんだ！', 'パーッと祝ってほしいな', '年に一度だから、盛大に頼むよ', '誕生日くらい主役でいたいんだよね', 'ケーキとシャンパン、両方頼んじゃおうかな'] },
+  { id: 'ceo',      title: '社長来店', emoji: '🤵', context: 'VIP・大口',    need: 'price', budget: 140000, bonusMult: 1.6, weight: 15, desc: '太い客。高単価キャストで攻めたい。', bg: '#322a12', bg2: '#5c4a14',
+    lines: ['うちの連中も連れて来たよ', '今日はいくら使ってもいい', '細かい値段は気にしなくていいから', '今月も景気がいいんだ、派手にいこう', '一番高いシャンパン、開けてもらおうか'] },
+  { id: 'drunk',    title: '酔っ払い', emoji: '🥴', context: 'かなり酔ってる', need: 'heal',  budget: 35000,  bonusMult: 1.2, weight: 30, desc: '落ち着かせられるキャストを。',     bg: '#2a2e1e', bg2: '#464e30',
+    lines: ['もう…けっこう飲んでるぅ…', 'ちょっと落ち着きたいなァ…', 'あれー、ここどこだっけ…', 'まだ飲めるって…たぶん…', '誰かそばにいてくれよぉ…'] },
+  { id: 'vip',      title: 'VIP指名',  emoji: '👑', context: '常連の上客',    need: 'talk',  budget: 105000, bonusMult: 1.5, weight: 25, desc: '会話で満足させればリピート確実。', bg: '#2a1e3a', bg2: '#463066',
+    lines: ['いつもの子はいるかい？', '今日も楽しませてくれよ', '今夜は急いでない。ゆっくり付き合ってくれ', 'いい酒を頼むよ。話し相手も含めてね', 'ここの居心地の良さが、通う理由でね', '細かいことは気にしなくていい。楽しめればそれで', 'また来たよ。この店の空気が好きでね'] },
 ];
 
 // --- 難易度／日ごとの設定 ---
