@@ -520,23 +520,36 @@ function renderTitle() {
         <div class="logo">付け回し<br><span class="logo-big">マスター</span></div>
         <div class="logo-deco">◆ ✦ ◆</div>`}
       </div>
-      <p class="subtitle">〜キャバクラ黒服 育成シミュレーション〜</p>
-      ${bestBadge}
-      ${careerBadge}
-      <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
-      <button class="btn btn-daily" id="dailyBtn">📅 本日の営業<span class="btn-sub">日替わり・全国みんな同じお客様</span></button>
+      <div class="title-career">${bestBadge}${careerBadge}</div>
+      <div class="title-actions">
+        <button class="btn btn-primary title-start" id="startBtn"><span>ゲームスタート</span><small>黒服として営業を始める</small></button>
+        <button class="btn btn-daily" id="dailyBtn">📅 本日の営業<span class="btn-sub">日替わり・全国みんな同じお客様</span></button>
+      </div>
       ${(() => { const db = loadDailyBest(); return db ? `<div class="daily-best">本日の自己ベスト <b>${yen(db.sales)}</b></div>` : ''; })()}
       <p class="hint">来るお客に合わせて最適なキャストを付け回し、<br>1日の売上目標を目指せ！</p>
-      <div class="title-ranking">${cloudRankingBlock('titleCloudRanking', 5)}</div>
-      <details class="ranking local-ranking">
-        <summary>📱 この端末の記録</summary>
-        <div class="local-ranking-body">${rankingHTML()}</div>
-      </details>
-      <button class="btn btn-ghost ach-btn" id="achBtn">🏅 実績 <span class="ach-count">${Achieve.count()}/${Achieve.DEFS.length}</span></button>
+      <div class="title-menu">
+        <button class="title-menu-btn" id="achBtn"><span class="title-menu-icon">🏅</span><span>実績<small>${Achieve.count()}/${Achieve.DEFS.length} 解除</small></span></button>
+        <button class="title-menu-btn" id="rankingBtn" aria-expanded="false" aria-controls="titleRankings"><span class="title-menu-icon">🏆</span><span>ランキング<small>全国・端末記録</small></span></button>
+      </div>
+      <div class="title-rankings" id="titleRankings" hidden>
+        <div class="title-ranking">${cloudRankingBlock('titleCloudRanking', 5)}</div>
+        <details class="ranking local-ranking">
+          <summary>📱 この端末の記録</summary>
+          <div class="local-ranking-body">${rankingHTML()}</div>
+        </details>
+      </div>
     </div>`;
   document.getElementById('startBtn').onclick = () => { SFX.tap(); startSelection(); };
   document.getElementById('dailyBtn').onclick = () => { SFX.tap(); startDailySelection(); };
   document.getElementById('achBtn').onclick = () => { SFX.tap(); showAchievements(); };
+  document.getElementById('rankingBtn').onclick = () => {
+    SFX.tap();
+    const rankings = document.getElementById('titleRankings');
+    rankings.hidden = !rankings.hidden;
+    const expanded = !rankings.hidden;
+    document.getElementById('rankingBtn').setAttribute('aria-expanded', String(expanded));
+    if (expanded) rankings.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
   document.getElementById('muteBtn').onclick = (e) => {
     SFX.toggle();
     e.currentTarget.textContent = SFX.muted ? '🔇' : '🔊';
